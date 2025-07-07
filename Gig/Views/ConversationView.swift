@@ -133,20 +133,17 @@ struct ConversationView: View {
     
     private var profileImage: some View {
         if let provider = findProvider() {
-            if let urlString = provider.profileImageURL {
-                if !urlString.isEmpty {
-                    if let url = URL(string: urlString) {
-                        return AnyView(
-                            AsyncImage(url: url) { image in
-                                image.resizable().aspectRatio(contentMode: .fill)
-                            } placeholder: {
-                                Image(systemName: "person.circle.fill")
-                                    .resizable()
-                                    .foregroundColor(.gray)
-                            }
-                        )
+            let urlString = provider.profileImageURL
+            if !urlString.isEmpty, let url = URL(string: urlString) {
+                return AnyView(
+                    AsyncImage(url: url) { image in
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Image(systemName: "person.circle.fill")
+                            .resizable()
+                            .foregroundColor(.gray)
                     }
-                }
+                )
             }
         }
         return AnyView(
@@ -162,6 +159,29 @@ struct ConversationMessageBubbleView: View {
     var body: some View {
         HStack {
             if message.isFromCurrentUser {
+                Spacer()
+                Text(message.content)
+                    .padding()
+                    .background(Color.teal)
+                    .foregroundColor(.white)
+                    .cornerRadius(16)
+            } else {
+                Text(message.content)
+                    .padding()
+                    .background(Color(.systemGray5))
+                    .foregroundColor(.primary)
+                    .cornerRadius(16)
+                Spacer()
+            }
+        }
+    }
+}
+
+struct MessageBubbleView: View {
+    let message: Message
+    var body: some View {
+        HStack {
+            if message.isFromUser {
                 Spacer()
                 Text(message.content)
                     .padding()

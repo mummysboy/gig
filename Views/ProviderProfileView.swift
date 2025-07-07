@@ -88,17 +88,19 @@ struct ProviderProfileView: View {
     }
 
     private var profileImage: some View {
-        if let urlString = provider.profileImageURL, !urlString.isEmpty {
-            if let url = URL(string: urlString) {
-                return AnyView(
-                    AsyncImage(url: url) { image in
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Image(systemName: "person.circle.fill")
-                            .resizable()
-                            .foregroundColor(.gray)
-                    }
-                )
+        if let urlString = provider.profileImageURL {
+            if !urlString.isEmpty {
+                if let url = URL(string: urlString) {
+                    return AnyView(
+                        AsyncImage(url: url) { image in
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            Image(systemName: "person.circle.fill")
+                                .resizable()
+                                .foregroundColor(.gray)
+                        }
+                    )
+                }
             }
         }
         return AnyView(
