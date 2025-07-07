@@ -12,6 +12,7 @@ class CallService: NSObject, ObservableObject {
     private var callProvider: CXProvider
     private var callUpdate = CXCallUpdate()
     private var timer: Timer?
+    private var activeCallUUID: UUID?
     
     override init() {
         let providerConfiguration = CXProviderConfiguration(localizedName: "Gig")
@@ -26,9 +27,16 @@ class CallService: NSObject, ObservableObject {
         callProvider.setDelegate(self, queue: nil)
     }
     
+    deinit {
+        timer?.invalidate()
+    }
+    
     func startCall(with provider: Provider) {
+        let callUUID = UUID()
+        activeCallUUID = callUUID
+        
         let handle = CXHandle(type: .generic, value: provider.id)
-        let startCallAction = CXStartCallAction(call: UUID(), handle: handle)
+        let startCallAction = CXStartCallAction(call: callUUID, handle: handle)
         startCallAction.isVideo = false
         
         let transaction = CXTransaction(action: startCallAction)
@@ -36,10 +44,14 @@ class CallService: NSObject, ObservableObject {
         callController.request(transaction) { [weak self] error in
             if let error = error {
                 print("Error starting call: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    self?.activeCallUUID = nil
+                }
             } else {
                 DispatchQueue.main.async {
                     self?.isInCall = true
                     self?.currentCall = Call(
+                        id: callUUID.uuidString,
                         providerName: provider.name,
                         providerId: provider.id,
                         status: .ongoing
@@ -51,22 +63,31 @@ class CallService: NSObject, ObservableObject {
     }
     
     func endCall() {
-        guard let callUUID = currentCall?.id else { return }
+        guard let callUUID = activeCallUUID else { 
+            // Fallback: try to clean up local state even if no UUID
+            cleanupCallState()
+            return 
+        }
         
-        let endCallAction = CXEndCallAction(call: UUID(uuidString: callUUID) ?? UUID())
+        let endCallAction = CXEndCallAction(call: callUUID)
         let transaction = CXTransaction(action: endCallAction)
         
         callController.request(transaction) { [weak self] error in
             if let error = error {
                 print("Error ending call: \(error.localizedDescription)")
-            } else {
-                DispatchQueue.main.async {
-                    self?.stopCallTimer()
-                    self?.isInCall = false
-                    self?.currentCall = nil
-                }
+            }
+            // Always clean up state regardless of CallKit result
+            DispatchQueue.main.async {
+                self?.cleanupCallState()
             }
         }
+    }
+    
+    private func cleanupCallState() {
+        stopCallTimer()
+        isInCall = false
+        currentCall = nil
+        activeCallUUID = nil
     }
     
     private func startCallTimer() {
@@ -104,9 +125,7 @@ extension CallService: CXProviderDelegate {
     func provider(_ provider: CXProvider, perform action: CXEndCallAction) {
         // Handle end call action
         DispatchQueue.main.async {
-            self.stopCallTimer()
-            self.isInCall = false
-            self.currentCall = nil
+            self.cleanupCallState()
         }
         action.fulfill()
     }

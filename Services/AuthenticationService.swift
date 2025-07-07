@@ -51,19 +51,25 @@ class AuthenticationService: ObservableObject {
     }
     
     private func checkAuthenticationStatus() {
-        // In a real app, you would check for a valid session token
+        // Check for valid authentication in Keychain
         // For demo purposes, we'll start with not authenticated
-        isAuthenticated = false
+        isAuthenticated = KeychainHelper.shared.getBool(forKey: "isAuthenticated") ?? false
     }
     
     private func saveAuthenticationState() {
-        // Save authentication state to UserDefaults or Keychain
-        UserDefaults.standard.set(true, forKey: "isAuthenticated")
+        // Save authentication state to Keychain for security
+        KeychainHelper.shared.setBool(true, forKey: "isAuthenticated")
+        
+        // Also save timestamp for session validation
+        if let timestampData = Date().timeIntervalSince1970.description.data(using: .utf8) {
+            KeychainHelper.shared.setData(timestampData, forKey: "authTimestamp")
+        }
     }
     
     private func clearAuthenticationState() {
-        // Clear authentication state
-        UserDefaults.standard.set(false, forKey: "isAuthenticated")
+        // Clear authentication state from Keychain
+        KeychainHelper.shared.delete(forKey: "isAuthenticated")
+        KeychainHelper.shared.delete(forKey: "authTimestamp")
     }
     
     private func getAuthenticationErrorMessage(_ error: Error?) -> String {

@@ -46,15 +46,16 @@ class ConversationService: ObservableObject {
         
         // Update conversation's last message
         if let index = conversations.firstIndex(where: { $0.id == conversationId }) {
+            let existingConversation = conversations[index]
             conversations[index] = Conversation(
-                id: conversations[index].id,
-                participantId: conversations[index].participantId,
-                participantName: conversations[index].participantName,
-                participantImageURL: conversations[index].participantImageURL,
+                id: existingConversation.id,
+                participantId: existingConversation.participantId,
+                participantName: existingConversation.participantName,
+                participantImageURL: existingConversation.participantImageURL,
                 lastMessage: content,
                 lastMessageTime: Date(),
-                unreadCount: conversations[index].unreadCount,
-                isProvider: conversations[index].isProvider
+                unreadCount: existingConversation.unreadCount,
+                isProvider: existingConversation.isProvider
             )
         }
         
@@ -73,16 +74,17 @@ class ConversationService: ObservableObject {
             self?.messages.append(providerMessage)
             
             // Update conversation's last message
-            if let index = self?.conversations.firstIndex(where: { $0.id == conversationId }) {
+            if let index = self?.conversations.firstIndex(where: { $0.id == conversationId }),
+               let existingConversation = self?.conversations[index] {
                 self?.conversations[index] = Conversation(
-                    id: self?.conversations[index].id ?? "",
-                    participantId: self?.conversations[index].participantId ?? "",
-                    participantName: self?.conversations[index].participantName ?? "",
-                    participantImageURL: self?.conversations[index].participantImageURL,
+                    id: existingConversation.id,
+                    participantId: existingConversation.participantId,
+                    participantName: existingConversation.participantName,
+                    participantImageURL: existingConversation.participantImageURL,
                     lastMessage: response,
                     lastMessageTime: Date(),
                     unreadCount: 0,
-                    isProvider: self?.conversations[index].isProvider ?? false
+                    isProvider: existingConversation.isProvider
                 )
             }
         }
@@ -108,15 +110,16 @@ class ConversationService: ObservableObject {
     
     func markConversationAsRead(_ conversationId: String) {
         if let index = conversations.firstIndex(where: { $0.id == conversationId }) {
+            let existingConversation = conversations[index]
             conversations[index] = Conversation(
-                id: conversations[index].id,
-                participantId: conversations[index].participantId,
-                participantName: conversations[index].participantName,
-                participantImageURL: conversations[index].participantImageURL,
-                lastMessage: conversations[index].lastMessage,
-                lastMessageTime: conversations[index].lastMessageTime,
+                id: existingConversation.id,
+                participantId: existingConversation.participantId,
+                participantName: existingConversation.participantName,
+                participantImageURL: existingConversation.participantImageURL,
+                lastMessage: existingConversation.lastMessage,
+                lastMessageTime: existingConversation.lastMessageTime,
                 unreadCount: 0,
-                isProvider: conversations[index].isProvider
+                isProvider: existingConversation.isProvider
             )
         }
     }

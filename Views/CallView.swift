@@ -8,6 +8,8 @@ struct CallView: View {
     @State private var isMuted = false
     @State private var isSpeakerOn = false
     @State private var showingFeedback = false
+    @State private var showingError = false
+    @State private var errorMessage = ""
     
     var body: some View {
         ZStack {
@@ -104,6 +106,14 @@ struct CallView: View {
         .onAppear {
             // Start the call
             callService.startCall(with: provider)
+            
+            // Check if call failed to start after a delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                if !callService.isInCall {
+                    errorMessage = "Failed to connect call. Please try again."
+                    showingError = true
+                }
+            }
         }
         .onDisappear {
             // End call if still active
@@ -113,6 +123,13 @@ struct CallView: View {
         }
         .sheet(isPresented: $showingFeedback) {
             FeedbackView(provider: provider)
+        }
+        .alert("Call Error", isPresented: $showingError) {
+            Button("OK") {
+                dismiss()
+            }
+        } message: {
+            Text(errorMessage)
         }
     }
 }

@@ -249,7 +249,7 @@ enum MessageStatus {
 
 #Preview {
     ConversationView(
-        conversation: Conversation.sampleData.first!,
+        conversation: Conversation.sampleData[0],
         conversationService: ConversationService()
     )
 } 

@@ -239,5 +239,5 @@ struct ProviderProfileView: View {
 }
 
 #Preview {
-    ProviderProfileView(provider: Provider.sampleData.first!)
+    ProviderProfileView(provider: Provider.sampleData[0])
 } 
