@@ -1,0 +1,15 @@
+Gig is the smart phonebook for the gig economy.
+
+Whether you're looking to hire or get hired, Gig is the fastest, simplest way to connect. Use your face to log in securely, tell the app what you need in a quick chat, and get instant access to verified, local service providers.
+
+Key Features:
+- Face ID–only login (no passwords!)
+- Smart, chat-based service search
+- In-app VoIP calling between clients and providers
+- Public provider profiles with voice notes, photos, and availability
+- Location-based matching for local gigs
+- Feedback collection after each call
+
+Perfect for handymen, tutors, cleaners, creatives, coaches, and anyone offering services.
+
+Gig – Say goodbye to dashboards. Say hello to people.
