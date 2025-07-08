@@ -25,6 +25,10 @@ class ChatService: ObservableObject {
     @MainActor
     private func analyzeMessageWithAI(_ userMessage: String) async {
         do {
+            // Log available categories for debugging
+            print("[ChatService] Available categories: \(Provider.categoriesList)")
+            Provider.printCategoryStats()
+            
             // Try to get AI analysis (will use mock if API key is not set)
             let analysis = try await aiService.analyzeUserMessage(userMessage)
             
@@ -61,12 +65,14 @@ class ChatService: ObservableObject {
         var providers: [Provider] = []
         
         print("[ChatService] Mapping \(recommendations.count) recommendations to providers")
+        print("[ChatService] Available categories in sample data: \(Provider.categoriesList)")
         
         for recommendation in recommendations {
             let category = recommendation.service
             print("[ChatService] Looking for providers in category: '\(category)'")
             
-            let matchingProviders = Provider.sampleData.filter { $0.category == category }
+            // Use the new utility function
+            let matchingProviders = Provider.providers(for: category)
             print("[ChatService] Found \(matchingProviders.count) providers for category '\(category)'")
             
             if !matchingProviders.isEmpty {
@@ -75,7 +81,14 @@ class ChatService: ObservableObject {
                 providers.append(contentsOf: selectedProviders)
                 print("[ChatService] Added \(selectedProviders.count) providers for '\(category)': \(selectedProviders.map { $0.name })")
             } else {
-                // If no exact match, add some general providers
+                // If no exact match, check if the category exists in our available categories
+                if Provider.isValidCategory(category) {
+                    print("[ChatService] Category '\(category)' exists but no providers found - this might be a data issue")
+                } else {
+                    print("[ChatService] Category '\(category)' not found in available categories: \(Provider.categoriesList)")
+                }
+                
+                // Add some general providers as fallback
                 let generalProviders = Array(Provider.sampleData.prefix(2))
                 providers.append(contentsOf: generalProviders)
                 print("[ChatService] No exact match for '\(category)', added general providers: \(generalProviders.map { $0.name })")
@@ -84,7 +97,7 @@ class ChatService: ObservableObject {
         
         // Remove duplicates and limit to 6 total
         let uniqueProviders = Array(Set(providers)).prefix(6).map { $0 }
-        print("[ChatService] Final provider list (\(uniqueProviders.count) providers): \(uniqueProviders.map { "\($0.name) (\($0.category))" })")
+        print("[ChatService] Final provider list (\(uniqueProviders.count) providers): \(uniqueProviders.map { "\($0.name) (\($0.primaryCategory ?? "") )" })")
         
         return uniqueProviders
     }

@@ -282,7 +282,7 @@ struct NewMessageView: View {
         } else {
             return Provider.sampleData.filter { provider in
                 provider.name.localizedCaseInsensitiveContains(searchText) ||
-                provider.category.localizedCaseInsensitiveContains(searchText)
+                (provider.primaryCategory ?? "").localizedCaseInsensitiveContains(searchText)
             }
         }
     }
@@ -327,7 +327,7 @@ struct ProviderRowView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
                 
-                Text(provider.category)
+                Text(provider.primaryCategory ?? "")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 

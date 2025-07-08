@@ -4,7 +4,7 @@ import CoreLocation
 struct Provider: Identifiable, Codable, Hashable {
     let id: String
     var name: String
-    var category: String
+    var categories: [String]
     var bio: String
     var profileImageURL: String
     var hourlyRate: Int
@@ -21,7 +21,7 @@ struct Provider: Identifiable, Codable, Hashable {
     
     init(id: String = UUID().uuidString,
          name: String,
-         category: String,
+         categories: [String],
          bio: String = "",
          profileImageURL: String = "",
          hourlyRate: Int,
@@ -37,7 +37,7 @@ struct Provider: Identifiable, Codable, Hashable {
          joinDate: Date = Date()) {
         self.id = id
         self.name = name
-        self.category = category
+        self.categories = categories
         self.bio = bio
         self.profileImageURL = profileImageURL
         self.hourlyRate = hourlyRate
@@ -51,6 +51,10 @@ struct Provider: Identifiable, Codable, Hashable {
         self.photos = photos
         self.isVerified = isVerified
         self.joinDate = joinDate
+    }
+    /// For backward compatibility: returns the first category if available
+    var primaryCategory: String? {
+        return categories.first
     }
     
     // MARK: - Hashable
@@ -79,14 +83,61 @@ extension Provider {
         "Painter",
         "Landscaper"
     ]
+    
+    /// Dynamically extracts all available categories from the sample data
+    /// This ensures the AI system always uses the current categories
+    static var availableCategories: [String] {
+        let categories = Set(sampleData.flatMap { $0.categories })
+        return Array(categories).sorted()
+    }
+    
+    /// Gets a formatted string of all available categories for AI prompts
+    static var categoriesForAIPrompt: String {
+        return availableCategories.map { "- \($0)" }.joined(separator: "\n           ")
+    }
+    
+    /// Gets a comma-separated list of categories for quick reference
+    static var categoriesList: String {
+        return availableCategories.joined(separator: ", ")
+    }
+    
+    /// Checks if a category exists in the available categories
+    static func isValidCategory(_ category: String) -> Bool {
+        return availableCategories.contains(category)
+    }
+    
+    /// Gets providers for a specific category
+    static func providers(for category: String) -> [Provider] {
+        return sampleData.filter { $0.categories.contains(category) }
+    }
+    
+    /// Gets all unique categories with their provider counts
+    static var categoryStats: [(category: String, count: Int)] {
+        let allCategories = sampleData.flatMap { $0.categories }
+        let statsDict = Dictionary(grouping: allCategories, by: { $0 })
+            .mapValues { catArr in catArr.count }
+        let stats = statsDict.map { (category: $0.key, count: $0.value) }
+            .sorted { $0.category < $1.category }
+        return stats
+    }
+    
+    /// Prints category statistics for debugging
+    static func printCategoryStats() {
+        print("📊 Category Statistics:")
+        for stat in categoryStats {
+            print("   \(stat.category): \(stat.count) providers")
+        }
+        print("   Total categories: \(availableCategories.count)")
+        print("   Total providers: \(sampleData.count)")
+    }
 }
 
 // MARK: - Sample Data
 extension Provider {
-    static let sampleData: [Provider] = [
+    static var sampleData: [Provider] = [
         Provider(
             name: "Mike Johnson",
-            category: "Handyman",
+            categories: ["Handyman"],
             bio: "Experienced handyman with 10+ years in home repairs. Specializing in plumbing, electrical, and general maintenance.",
             profileImageURL: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 45,
@@ -98,7 +149,7 @@ extension Provider {
         ),
         Provider(
             name: "Sarah Chen",
-            category: "Tutor",
+            categories: ["Tutor"],
             bio: "Certified math and science tutor with a Master's degree in Education. Patient and experienced with students of all ages.",
             profileImageURL: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 35,
@@ -110,7 +161,7 @@ extension Provider {
         ),
         Provider(
             name: "Maria Rodriguez",
-            category: "Cleaner",
+            categories: ["Cleaner"],
             bio: "Professional house cleaner with attention to detail. Eco-friendly cleaning products available upon request.",
             profileImageURL: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 25,
@@ -122,7 +173,7 @@ extension Provider {
         ),
         Provider(
             name: "David Kim",
-            category: "Creative",
+            categories: ["Creative"],
             bio: "Professional photographer and videographer. Specializing in portraits, events, and commercial photography.",
             profileImageURL: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 75,
@@ -134,7 +185,7 @@ extension Provider {
         ),
         Provider(
             name: "Lisa Thompson",
-            category: "Coach",
+            categories: ["Coach"],
             bio: "Certified personal trainer and nutrition coach. Helping clients achieve their fitness goals through personalized programs.",
             profileImageURL: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 60,
@@ -146,7 +197,7 @@ extension Provider {
         ),
         Provider(
             name: "James Wilson",
-            category: "Handyman",
+            categories: ["Handyman"],
             bio: "Skilled carpenter and general contractor. Quality workmanship guaranteed on all projects.",
             profileImageURL: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 50,
@@ -158,7 +209,7 @@ extension Provider {
         ),
         Provider(
             name: "Emma Davis",
-            category: "Tutor",
+            categories: ["Tutor"],
             bio: "English and literature tutor with a passion for helping students improve their writing and reading skills.",
             profileImageURL: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 30,
@@ -170,7 +221,7 @@ extension Provider {
         ),
         Provider(
             name: "Carlos Mendez",
-            category: "Cleaner",
+            categories: ["Cleaner"],
             bio: "Reliable and thorough cleaning service. Available for regular and one-time cleaning appointments.",
             profileImageURL: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 22,
@@ -182,7 +233,7 @@ extension Provider {
         ),
         Provider(
             name: "Alex Rodriguez",
-            category: "Plumber",
+            categories: ["Plumber"],
             bio: "Licensed plumber with 15+ years experience. Specializing in emergency repairs, installations, and maintenance.",
             profileImageURL: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 65,
@@ -194,7 +245,7 @@ extension Provider {
         ),
         Provider(
             name: "Jennifer Park",
-            category: "Electrician",
+            categories: ["Electrician"],
             bio: "Certified electrician providing safe and reliable electrical services. Licensed and insured for your peace of mind.",
             profileImageURL: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 70,
@@ -206,7 +257,7 @@ extension Provider {
         ),
         Provider(
             name: "Marcus Johnson",
-            category: "Personal Trainer",
+            categories: ["Personal Trainer"],
             bio: "Certified personal trainer helping clients achieve their fitness goals through personalized workout plans and nutrition guidance.",
             profileImageURL: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 55,
@@ -218,7 +269,7 @@ extension Provider {
         ),
         Provider(
             name: "Sophie Chen",
-            category: "Photographer",
+            categories: ["Photographer"],
             bio: "Professional photographer specializing in portraits, events, and commercial photography. Creating beautiful memories through the lens.",
             profileImageURL: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 85,
@@ -230,7 +281,7 @@ extension Provider {
         ),
         Provider(
             name: "Robert Martinez",
-            category: "Carpenter",
+            categories: ["Carpenter"],
             bio: "Skilled carpenter with expertise in custom woodworking, furniture making, and home renovations.",
             profileImageURL: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 45,
@@ -242,7 +293,7 @@ extension Provider {
         ),
         Provider(
             name: "Amanda Foster",
-            category: "Painter",
+            categories: ["Painter"],
             bio: "Professional painter providing quality interior and exterior painting services. Attention to detail and clean work guaranteed.",
             profileImageURL: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 35,
@@ -254,7 +305,7 @@ extension Provider {
         ),
         Provider(
             name: "Tom Anderson",
-            category: "Landscaper",
+            categories: ["Landscaper"],
             bio: "Experienced landscaper creating beautiful outdoor spaces. From garden design to lawn maintenance, I bring your vision to life.",
             profileImageURL: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
             hourlyRate: 30,

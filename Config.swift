@@ -3,23 +3,24 @@ import Foundation
 struct Config {
     // MARK: - API Keys
     static let openAIKey: String = {
+        print("🔍 [Config] Checking for OpenAI API key...")
+        print("🔍 [Config] All environment variables: \(ProcessInfo.processInfo.environment)")
         // First try to get from environment variable
-        if let envKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
+        if let envKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !envKey.isEmpty {
+            print("✅ [Config] Found API key in environment variable: \(envKey.prefix(10))... (source: ENV)")
             return envKey
+        } else {
+            print("❌ [Config] No API key found in environment variable")
         }
-        
         // Fallback to Info.plist for development
-        if let plistKey = Bundle.main.object(forInfoDictionaryKey: "OPENAI_API_KEY") as? String {
+        if let plistKey = Bundle.main.object(forInfoDictionaryKey: "OPENAI_API_KEY") as? String, !plistKey.isEmpty {
+            print("✅ [Config] Found API key in Info.plist: \(plistKey.prefix(10))... (source: Info.plist)")
             return plistKey
+        } else {
+            print("❌ [Config] No API key found in Info.plist")
         }
-        
-        // No API key found - this should be set via environment variable or Info.plist
-        #if DEBUG
-        print("⚠️ Warning: OPENAI_API_KEY not found. Please set it in your environment variables or Info.plist")
+        print("⚠️ [Config] No valid OpenAI API key found. Fallback/mock mode will be used.")
         return ""
-        #else
-        fatalError("OPENAI_API_KEY not found in environment or Info.plist")
-        #endif
     }()
     
     // MARK: - API Configuration
@@ -33,7 +34,8 @@ struct Config {
     
     // MARK: - Validation
     static func validateConfiguration() -> Bool {
-        let key = openAIKey
-        return !key.isEmpty && key.hasPrefix("sk-")
+        let valid = !openAIKey.isEmpty && openAIKey.starts(with: "sk-")
+        print("[Config] API key validation: \(valid ? "✅ valid" : "❌ invalid")")
+        return valid
     }
 } 

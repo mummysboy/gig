@@ -43,9 +43,11 @@ struct ContentView: View {
                                     image
                                         .resizable()
                                         .aspectRatio(contentMode: .fill)
+                                        .clipped()
                                 } placeholder: {
                                     Image(systemName: "person.circle.fill")
                                         .resizable()
+                                        .aspectRatio(contentMode: .fit)
                                         .foregroundColor(.gray)
                                 }
                                 .frame(width: 120, height: 120)
@@ -53,9 +55,13 @@ struct ContentView: View {
                                 .onAppear {
                                     print("[ContentView] Loading profile image from: \(url)")
                                 }
+                                .onDisappear {
+                                    print("[ContentView] Profile image disappeared")
+                                }
                             } else {
                                 Image(systemName: "person.circle.fill")
                                     .resizable()
+                                    .aspectRatio(contentMode: .fit)
                                     .foregroundColor(.gray)
                                     .frame(width: 120, height: 120)
                                     .onAppear {

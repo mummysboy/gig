@@ -86,7 +86,7 @@ struct FeedbackView: View {
                     .font(.headline)
                     .fontWeight(.semibold)
                 
-                Text(provider.category)
+                Text(provider.primaryCategory ?? "")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }

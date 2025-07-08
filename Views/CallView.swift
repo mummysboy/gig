@@ -65,7 +65,7 @@ struct CallView: View {
                             .fontWeight(.bold)
                             .foregroundColor(.white)
                         
-                        Text(provider.category)
+                        Text(provider.primaryCategory ?? "")
                             .font(.subheadline)
                             .foregroundColor(.white.opacity(0.8))
                         

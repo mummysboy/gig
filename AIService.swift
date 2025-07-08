@@ -63,24 +63,20 @@ class AIService: ObservableObject {
         
         defer { isLoading = false }
         
+        // Get dynamic categories from the sample data
+        let categoriesList = Provider.categoriesList
+        
         let systemPrompt = """
         You are an AI assistant for a service marketplace app called "Gig". Your job is to:
         1. Analyze user messages to understand their needs
-        2. Recommend relevant services from these EXACT categories:
-           - Handyman (plumbing, electrical, repairs, home maintenance, carpentry)
-           - Tutor (academic subjects, test prep, skills training, homework help)
-           - Cleaner (house cleaning, deep cleaning, organizing, laundry)
-           - Creative (photography, videography, graphic design, content creation)
-           - Coach (personal training, life coaching, career coaching, fitness)
-           - Photographer (portraits, events, commercial photography)
-           - Personal Trainer (fitness training, nutrition, weight loss)
-           - Plumber (plumbing repairs, installations, maintenance)
-           - Electrician (electrical work, installations, repairs)
-           - Carpenter (woodworking, furniture, construction)
-           - Painter (interior/exterior painting, refinishing)
-           - Landscaper (gardening, lawn care, outdoor design)
+        2. Recommend relevant services from these EXACT categories (these are the only categories available in our system):
+           \(Provider.categoriesForAIPrompt)
         
         3. Provide a helpful response and specific service recommendations
+        
+        IMPORTANT: Only recommend categories that exist in the list above. If a user asks for a service that doesn't match any of these categories, suggest the closest available category or ask for clarification.
+        
+        Available categories: \(categoriesList)
         
         Respond in JSON format:
         {
@@ -157,12 +153,15 @@ class AIService: ObservableObject {
         // Fallback mock response when API is not available
         let lowercasedMessage = message.lowercased()
         
+        // Get available categories for dynamic recommendations
+        let availableCategories = Provider.availableCategories
+        
         if lowercasedMessage.contains("plumbing") || lowercasedMessage.contains("leak") || lowercasedMessage.contains("pipe") {
             return AIAnalysisResult(
                 response: "I can see you're having plumbing issues. Let me find you a qualified plumber who can help with that.",
                 recommendations: [
                     ServiceRecommendation(
-                        service: "Plumber",
+                        service: availableCategories.contains("Plumber") ? "Plumber" : "Handyman",
                         description: "Professional plumbing repair and maintenance",
                         reasoning: "Your message mentions plumbing issues which requires specialized skills",
                         urgency: "high"
@@ -210,7 +209,7 @@ class AIService: ObservableObject {
                 response: "I can help you find a professional photographer for your event. Let me connect you with talented photographers.",
                 recommendations: [
                     ServiceRecommendation(
-                        service: "Photographer",
+                        service: availableCategories.contains("Photographer") ? "Photographer" : "Creative",
                         description: "Professional photography for events and portraits",
                         reasoning: "You mentioned needing photography services",
                         urgency: "medium"
@@ -230,7 +229,7 @@ class AIService: ObservableObject {
                 response: "I can help you find a personal trainer to achieve your fitness goals. Let me connect you with certified trainers.",
                 recommendations: [
                     ServiceRecommendation(
-                        service: "Personal Trainer",
+                        service: availableCategories.contains("Personal Trainer") ? "Personal Trainer" : "Coach",
                         description: "Certified personal training and fitness coaching",
                         reasoning: "You mentioned needing fitness training",
                         urgency: "medium"
@@ -250,7 +249,7 @@ class AIService: ObservableObject {
                 response: "I can help you find a qualified electrician for your electrical work. Let me connect you with licensed professionals.",
                 recommendations: [
                     ServiceRecommendation(
-                        service: "Electrician",
+                        service: availableCategories.contains("Electrician") ? "Electrician" : "Handyman",
                         description: "Professional electrical work and installations",
                         reasoning: "You mentioned needing electrical services",
                         urgency: "high"
@@ -266,28 +265,20 @@ class AIService: ObservableObject {
                 confidence: 0.9
             )
         } else {
+            // Default response with dynamic categories
+            let defaultCategories = Array(availableCategories.prefix(3))
+            let recommendations = defaultCategories.map { category in
+                ServiceRecommendation(
+                    service: category,
+                    description: "Professional \(category.lowercased()) services",
+                    reasoning: "General service category that covers a wide range of needs",
+                    urgency: "low"
+                )
+            }
+            
             return AIAnalysisResult(
-                response: "I'd be happy to help you find the right service! I can help with handyman work, tutoring, cleaning, photography, personal training, electrical work, and more. Could you tell me more about what you need?",
-                recommendations: [
-                    ServiceRecommendation(
-                        service: "Handyman",
-                        description: "General home repairs and maintenance",
-                        reasoning: "Handyman services cover a wide range of home needs",
-                        urgency: "low"
-                    ),
-                    ServiceRecommendation(
-                        service: "Tutor",
-                        description: "Academic tutoring and educational support",
-                        reasoning: "Tutoring is a common service need",
-                        urgency: "low"
-                    ),
-                    ServiceRecommendation(
-                        service: "Cleaner",
-                        description: "Professional house cleaning services",
-                        reasoning: "Cleaning is a frequently requested service",
-                        urgency: "low"
-                    )
-                ],
+                response: "I'd be happy to help you find the right service! I can help with \(Provider.categoriesList.lowercased()), and more. Could you tell me more about what you need?",
+                recommendations: recommendations,
                 intent: "General inquiry",
                 confidence: 0.5
             )

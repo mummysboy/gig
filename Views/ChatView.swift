@@ -326,7 +326,7 @@ struct ProviderSuggestionRow: View {
                     Text(provider.name)
                         .font(.subheadline)
                         .fontWeight(.medium)
-                    Text(provider.category)
+                    Text(provider.primaryCategory ?? "")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
