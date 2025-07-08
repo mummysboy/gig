@@ -15,23 +15,42 @@ struct MessagesView: View {
                 
                 // Conversations list
                 if conversationService.isLoading {
-                    loadingView
+                    CardView { loadingView }
                 } else if filteredConversations.isEmpty {
-                    emptyStateView
+                    CardView { emptyStateView }
                 } else {
-                    conversationsList
+                    ScrollView {
+                        VStack(spacing: AppConstants.Spacing.md) {
+                            ForEach(filteredConversations) { conversation in
+                                CardView {
+                                    ConversationRowView(conversation: conversation)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            selectedConversation = conversation
+                                        }
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        conversationService.deleteConversation(conversation.id)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, AppConstants.Spacing.md)
+                        .padding(.top, AppConstants.Spacing.md)
+                    }
                 }
             }
             .navigationTitle("Messages")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
+                    ModernButton(title: "New", icon: "square.and.pencil", color: AppConstants.Colors.primary) {
                         showingNewMessage = true
-                    }) {
-                        Image(systemName: "square.and.pencil")
-                            .foregroundColor(.teal)
                     }
+                    .frame(maxWidth: 120)
                 }
             }
             .sheet(isPresented: $showingNewMessage) {
@@ -59,8 +78,8 @@ struct MessagesView: View {
             TextField("Search conversations...", text: $searchText)
         }
         .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(10)
+        .background(AppConstants.Colors.secondaryBackground)
+        .cornerRadius(AppConstants.CornerRadius.large)
         .padding(.horizontal)
         .padding(.bottom, 8)
     }
@@ -71,24 +90,6 @@ struct MessagesView: View {
         } else {
             return conversationService.searchConversations(query: searchText)
         }
-    }
-    
-    private var conversationsList: some View {
-        List(filteredConversations) { conversation in
-            ConversationRowView(conversation: conversation)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    selectedConversation = conversation
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) {
-                        conversationService.deleteConversation(conversation.id)
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                }
-        }
-        .listStyle(PlainListStyle())
     }
     
     private var loadingView: some View {
@@ -110,31 +111,21 @@ struct MessagesView: View {
             
             VStack(spacing: 8) {
                 Text("No Messages Yet")
-                    .font(.title2)
+                    .font(AppConstants.Fonts.title2)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
                 
                 Text("Start a conversation with a service provider to get help with your needs.")
-                    .font(.body)
+                    .font(AppConstants.Fonts.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }
             
-            Button(action: {
+            ModernButton(title: "Start New Conversation", icon: "plus", color: AppConstants.Colors.primary) {
                 showingNewMessage = true
-            }) {
-                HStack {
-                    Image(systemName: "plus")
-                    Text("Start New Conversation")
-                }
-                .font(.headline)
-                .foregroundColor(.white)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .background(Color.teal)
-                .cornerRadius(8)
             }
+            .frame(maxWidth: 240)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

@@ -2,20 +2,32 @@ import Foundation
 
 struct Service: Identifiable, Codable {
     let id: String
-    let name: String
-    let description: String
-    let hourlyRate: Double
-    let flatRate: Double?
-    let isAvailable: Bool
-    let category: String
-    
+    var name: String
+    var description: String
+    var hourlyRate: Double
+    var flatRate: Double?
+    var isAvailable: Bool
+    var category: String
+
+    // AI Enhancement fields
+    var originalDescription: String? // Stores the user's original description for undo
+    var enhancedDescription: String? // Stores the AI-enhanced description
+    var isShowingEnhanced: Bool = false // Whether the enhanced description is being shown
+    var isEnhancing: Bool = false // Whether an AI enhancement is in progress
+    var enhancementError: String? = nil // Error message if AI enhancement fails
+
     init(id: String = UUID().uuidString,
          name: String,
          description: String = "",
          hourlyRate: Double,
          flatRate: Double? = nil,
          isAvailable: Bool = true,
-         category: String = "") {
+         category: String = "",
+         originalDescription: String? = nil,
+         enhancedDescription: String? = nil,
+         isShowingEnhanced: Bool = false,
+         isEnhancing: Bool = false,
+         enhancementError: String? = nil) {
         self.id = id
         self.name = name
         self.description = description
@@ -23,6 +35,11 @@ struct Service: Identifiable, Codable {
         self.flatRate = flatRate
         self.isAvailable = isAvailable
         self.category = category
+        self.originalDescription = originalDescription
+        self.enhancedDescription = enhancedDescription
+        self.isShowingEnhanced = isShowingEnhanced
+        self.isEnhancing = isEnhancing
+        self.enhancementError = enhancementError
     }
 }
 

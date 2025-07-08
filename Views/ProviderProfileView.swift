@@ -294,60 +294,143 @@ struct ProviderProfileEditView: View {
     @State private var newServiceFlatRate: String = ""
     @State private var showAddServiceSheet = false
     @State private var errorMessage: String?
+    @StateObject private var aiService = AIService()
 
     var onSave: ((Provider) -> Void)? = nil
 
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Profile Info")) {
-                    TextField("Name", text: $name)
-                    TextField("Bio", text: $bio)
-                    TextField("Profile Image URL", text: $profileImageURL)
-                    Toggle("Available for work", isOn: $isAvailable)
-                }
-                Section(header: Text("Categories")) {
-                    Button(action: { showCategoryPicker = true }) {
-                        HStack {
-                            Text(selectedCategories.isEmpty ? "Select Categories" : selectedCategories.joined(separator: ", "))
-                                .foregroundColor(selectedCategories.isEmpty ? .secondary : .primary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.gray)
-                        }
-                    }
-                }
-                Section(header: Text("Services")) {
-                    ForEach(services.indices, id: \.self) { i in
-                        VStack(alignment: .leading) {
-                            Text(services[i].name).fontWeight(.semibold)
-                            if !services[i].description.isEmpty {
-                                Text(services[i].description).font(.caption).foregroundColor(.secondary)
-                            }
-                            HStack(spacing: 16) {
-                                Text("$\(String(format: "%.2f", services[i].hourlyRate))/hr")
-                                if let flat = services[i].flatRate {
-                                    Text("$\(String(format: "%.2f", flat)) flat")
+            ScrollView {
+                VStack(spacing: AppConstants.Spacing.lg) {
+                    // Profile Header Card
+                    CardView {
+                        VStack(spacing: AppConstants.Spacing.md) {
+                            // Profile image
+                            if !profileImageURL.isEmpty, let url = URL(string: profileImageURL), url.scheme != nil {
+                                AsyncImage(url: url) { image in
+                                    image.resizable().aspectRatio(contentMode: .fill)
+                                } placeholder: {
+                                    Image(systemName: "person.circle.fill").resizable().foregroundColor(.gray)
                                 }
-                            }.font(.caption)
+                                .frame(width: 100, height: 100)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(AppConstants.Colors.primary, lineWidth: 3))
+                            } else {
+                                Image(systemName: "person.circle.fill")
+                                    .resizable()
+                                    .foregroundColor(.gray)
+                                    .frame(width: 100, height: 100)
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(AppConstants.Colors.primary, lineWidth: 3))
+                            }
+                            TextField("Name", text: $name)
+                                .font(AppConstants.Fonts.title2.weight(.bold))
+                                .multilineTextAlignment(.center)
+                            TextField("Bio", text: $bio)
+                                .font(AppConstants.Fonts.body)
+                                .foregroundColor(AppConstants.Colors.secondaryText)
+                                .multilineTextAlignment(.center)
+                            Toggle("Available for work", isOn: $isAvailable)
+                                .toggleStyle(SwitchToggleStyle(tint: AppConstants.Colors.primary))
                         }
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                services.remove(at: i)
-                            } label: {
-                                Label("Delete", systemImage: "trash")
+                    }
+                    // Categories Card
+                    CardView {
+                        VStack(alignment: .leading, spacing: AppConstants.Spacing.md) {
+                            SectionHeader(title: "Categories")
+                            Button(action: { showCategoryPicker = true }) {
+                                HStack {
+                                    Text(selectedCategories.isEmpty ? "Select Categories" : selectedCategories.joined(separator: ", "))
+                                        .foregroundColor(selectedCategories.isEmpty ? .secondary : .primary)
+                                    Spacer()
+                                    Image(systemName: "chevron.right").foregroundColor(.gray)
+                                }
                             }
                         }
                     }
-                    Button("Add Service") { showAddServiceSheet = true }
-                }
-                if let error = errorMessage {
-                    Section {
-                        Text(error).foregroundColor(.red)
+                    // Services Card
+                    CardView {
+                        VStack(alignment: .leading, spacing: AppConstants.Spacing.md) {
+                            SectionHeader(title: "Services & Pricing")
+                            ForEach(services.indices, id: \.self) { i in
+                                CardView {
+                                    VStack(alignment: .leading, spacing: AppConstants.Spacing.sm) {
+                                        TextField("Service Name", text: $services[i].name)
+                                            .font(AppConstants.Fonts.headline)
+                                        ZStack(alignment: .trailing) {
+                                            TextField("Description", text: $services[i].description)
+                                                .font(AppConstants.Fonts.subheadline)
+                                                .foregroundColor(AppConstants.Colors.secondaryText)
+                                            if services[i].isEnhancing {
+                                                ProgressView().padding(.trailing, 8)
+                                            } else {
+                                                ModernButton(title: "Enhance with AI", icon: "sparkles", color: AppConstants.Colors.primary) {
+                                                    enhanceServiceWithAI(index: i)
+                                                }
+                                                .frame(maxWidth: 180)
+                                                .padding(.trailing, 8)
+                                            }
+                                        }
+                                        if let enhanced = services[i].enhancedDescription, services[i].isShowingEnhanced {
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text("AI Suggestion:")
+                                                    .font(AppConstants.Fonts.caption)
+                                                    .foregroundColor(.teal)
+                                                Text(enhanced)
+                                                    .font(AppConstants.Fonts.subheadline)
+                                                    .foregroundColor(.primary)
+                                                HStack(spacing: 12) {
+                                                    ModernButton(title: "Keep", icon: "checkmark", color: .green) {
+                                                        keepAISuggestion(index: i)
+                                                    }
+                                                    ModernButton(title: "Undo", icon: "arrow.uturn.backward", color: .gray) {
+                                                        undoAISuggestion(index: i)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if let error = services[i].enhancementError {
+                                            Text(error)
+                                                .font(AppConstants.Fonts.caption)
+                                                .foregroundColor(.red)
+                                        }
+                                        HStack(spacing: 16) {
+                                            Text("$\(String(format: "%.2f", services[i].hourlyRate))/hr")
+                                                .font(AppConstants.Fonts.caption)
+                                                .foregroundColor(.teal)
+                                            if let flat = services[i].flatRate {
+                                                Text("$\(String(format: "%.2f", flat)) flat")
+                                                    .font(AppConstants.Fonts.caption)
+                                                    .foregroundColor(.blue)
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(.bottom, AppConstants.Spacing.sm)
+                                .swipeActions {
+                                    Button(role: .destructive) {
+                                        services.remove(at: i)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                            }
+                            ModernButton(title: "Add Service", icon: "plus", color: AppConstants.Colors.primary) {
+                                showAddServiceSheet = true
+                            }
+                        }
+                    }
+                    if let error = errorMessage {
+                        CardView {
+                            Text(error)
+                                .foregroundColor(.red)
+                                .font(AppConstants.Fonts.body)
+                        }
                     }
                 }
+                .padding()
             }
-            .navigationTitle("Create Profile")
+            .navigationTitle("Edit Profile")
             .toolbar(content: {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -429,6 +512,86 @@ struct ProviderProfileEditView: View {
         newServiceFlatRate = ""
         showAddServiceSheet = false
     }
+
+    // --- AI Enhancement Logic ---
+    private func enhanceServiceWithAI(index: Int) {
+        guard services.indices.contains(index) else { return }
+        services[index].isEnhancing = true
+        services[index].enhancementError = nil
+        let name = services[index].name
+        let desc = services[index].description
+        services[index].originalDescription = desc
+        Task {
+            struct CategoryPickerView: View {
+                @Environment(\.dismiss) private var dismiss
+                @Binding var selected: [String]
+                var allCategories: [String] = Provider.availableCategories
+
+                var body: some View {
+                    NavigationView {
+                        List {
+                            ForEach(allCategories, id: \.self) { category in
+                                HStack {
+                                    Text(category)
+                                    Spacer()
+                                    if selected.contains(category) {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.teal)
+                                    }
+                                }
+                                .contentShape(Rectangle()) // makes the whole row tappable
+                                .onTapGesture {
+                                    toggle(category)
+                                }
+                            }
+                        }
+                        .navigationTitle("Select Categories")
+                        .listStyle(.insetGrouped)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button("Cancel") { dismiss() }
+                            }
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("Done") { dismiss() }
+                            }
+                        }
+                    }
+                }
+
+                private func toggle(_ category: String) {
+                    if let index = selected.firstIndex(of: category) {
+                        selected.remove(at: index)
+                    } else {
+                        selected.append(category)
+                    }
+                }
+            }
+            do {
+                let enhanced = try await aiService.enhanceServiceDescription(name: name, description: desc)
+                services[index].enhancedDescription = enhanced
+                services[index].isShowingEnhanced = true
+            } catch {
+                services[index].enhancementError = error.localizedDescription
+            }
+            services[index].isEnhancing = false
+        }
+    }
+    private func keepAISuggestion(index: Int) {
+        guard services.indices.contains(index), let enhanced = services[index].enhancedDescription else { return }
+        services[index].description = enhanced
+        services[index].isShowingEnhanced = false
+        services[index].enhancedDescription = nil
+        services[index].originalDescription = nil
+        services[index].enhancementError = nil
+    }
+    private func undoAISuggestion(index: Int) {
+        guard services.indices.contains(index), let original = services[index].originalDescription else { return }
+        services[index].description = original
+        services[index].isShowingEnhanced = false
+        services[index].enhancedDescription = nil
+        services[index].originalDescription = nil
+        services[index].enhancementError = nil
+    }
 }
 
 // MARK: - Category Picker
@@ -439,23 +602,46 @@ struct CategoryPickerView: View {
 
     var body: some View {
         NavigationView {
-            List(allCategories, id: \.self, selection: $selected) { cat in
-                Text(cat)
+            List {
+                ForEach(allCategories, id: \.self) { category in
+                    HStack {
+                        Text(category)
+                        Spacer()
+                        if selected.contains(category) {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.teal)
+                        }
+                    }
+                    .contentShape(Rectangle()) // makes the whole row tappable
+                    .onTapGesture {
+                        toggle(category)
+                    }
+                }
             }
             .navigationTitle("Select Categories")
-            .toolbar(content: {
+            .listStyle(.insetGrouped)
+            .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
                 }
-            })
-            .environment(\.editMode, .constant(.active))
-            .listStyle(.insetGrouped)
+            }
+        }
+    }
+
+    private func toggle(_ category: String) {
+        if let index = selected.firstIndex(of: category) {
+            selected.remove(at: index)
+        } else {
+            selected.append(category)
         }
     }
 }
+
+
+
 
 // MARK: - Provider Pool Add Helper
 extension Provider {

@@ -32,76 +32,12 @@ struct ContentView: View {
                             Text("Messages")
                         }
                     
-                    NavigationView {
-                        VStack(spacing: 24) {
-                            // Defensive profile image handling
-                            if let profileURL = user.profileImageURL,
-                               !profileURL.isEmpty,
-                               let url = URL(string: profileURL),
-                               url.scheme != nil {
-                                AsyncImage(url: url) { image in
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .clipped()
-                                } placeholder: {
-                                    Image(systemName: "person.circle.fill")
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .foregroundColor(.gray)
-                                }
-                                .frame(width: 120, height: 120)
-                                .clipShape(Circle())
-                                .onAppear {
-                                    print("[ContentView] Loading profile image from: \(url)")
-                                }
-                                .onDisappear {
-                                    print("[ContentView] Profile image disappeared")
-                                }
-                            } else {
-                                Image(systemName: "person.circle.fill")
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .foregroundColor(.gray)
-                                    .frame(width: 120, height: 120)
-                                    .onAppear {
-                                        print("[ContentView] Using fallback profile image. URL was: \(user.profileImageURL ?? "nil")")
-                                    }
-                            }
-                            Text(user.name)
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                            Text(user.email)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            if !user.categories.isEmpty {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Services you provide:")
-                                        .font(.headline)
-                                    ForEach(user.categories, id: \.self) { category in
-                                        Text("• " + category)
-                                            .font(.subheadline)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.top, 8)
-                            }
-                            Button("Edit Profile") {
-                                showEditProfile = true
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .padding(.top, 16)
-                            Spacer()
-                        }
-                        .padding()
-                        .navigationTitle("Profile")
-                    }
+                    ProviderProfileEditView(
+                        // Optionally, you can pass an onSave closure to update user/provider data
+                    )
                     .tabItem {
                         Image(systemName: "person.fill")
                         Text("Profile")
-                    }
-                    .sheet(isPresented: $showEditProfile) {
-                        UserProfileView(user: $user)
                     }
                 }
                 .accentColor(.teal)

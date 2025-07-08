@@ -15,104 +15,109 @@ struct ChatView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Subtle background gradient
-                LinearGradient(gradient: Gradient(colors: [Color(.systemGray6), Color(.systemBackground)]), startPoint: .top, endPoint: .bottom)
+                LinearGradient(gradient: Gradient(colors: [AppConstants.Colors.secondaryBackground, AppConstants.Colors.background]), startPoint: .top, endPoint: .bottom)
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
                     // Chat messages
                     ScrollViewReader { proxy in
                         ScrollView {
-                            LazyVStack(spacing: 16) {
+                            LazyVStack(spacing: AppConstants.Spacing.md) {
                                 // Welcome message
                                 if chatService.messages.isEmpty {
-                                    WelcomeMessageView()
+                                    CardView {
+                                        WelcomeMessageView()
+                                    }
                                 }
                                 
                                 // Messages
                                 ForEach(chatService.messages) { message in
-                                    MessageBubbleView(message: message, onProviderTap: { provider in
-                                        selectedProvider = provider
-                                        showProfileSheet = true
-                                    })
+                                    CardView {
+                                        MessageBubbleView(message: message, onProviderTap: { provider in
+                                            selectedProvider = provider
+                                            showProfileSheet = true
+                                        })
+                                    }
                                     .id(message.id)
                                 }
                                 
                                 // Loading indicator
                                 if chatService.isLoading {
-                                    HStack {
-                                        Image(systemName: "person.circle.fill")
-                                            .font(.title2)
-                                            .foregroundColor(.teal)
-                                        
-                                        HStack(spacing: 4) {
-                                            Text("AI is analyzing your request")
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
+                                    CardView {
+                                        HStack {
+                                            Image(systemName: "person.circle.fill")
+                                                .font(.title2)
+                                                .foregroundColor(.teal)
                                             
-                                            ProgressView()
-                                                .scaleEffect(0.8)
+                                            HStack(spacing: 4) {
+                                                Text("AI is analyzing your request")
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.secondary)
+                                                
+                                                ProgressView()
+                                                    .scaleEffect(0.8)
+                                            }
+                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, 12)
+                                            .background(AppConstants.Colors.secondaryBackground)
+                                            .cornerRadius(18)
+                                            .shadow(color: Color(.systemGray3), radius: 2, x: 0, y: 1)
+                                            
+                                            Spacer(minLength: 60)
                                         }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 12)
-                                        .background(Color(.systemGray5))
-                                        .cornerRadius(18)
-                                        .shadow(color: Color(.systemGray3), radius: 2, x: 0, y: 1)
-                                        
-                                        Spacer(minLength: 60)
                                     }
                                 }
                                 
                                 // Suggestions
                                 if showingSuggestions && chatService.messages.isEmpty {
-                                    SuggestionsView { suggestion in
-                                        chatService.sendMessage(suggestion)
-                                        showingSuggestions = false
+                                    CardView {
+                                        SuggestionsView { suggestion in
+                                            chatService.sendMessage(suggestion)
+                                            showingSuggestions = false
+                                        }
                                     }
                                 }
                             }
                             .padding(.bottom, 12)
-                            .padding(.horizontal, 8)
+                            .padding(.horizontal, AppConstants.Spacing.md)
                         }
                         .onTapGesture {
                             isTextFieldFocused = false // Dismiss keyboard
                         }
                         .onChange(of: chatService.messages.count) { _ in
                             if let lastMessage = chatService.messages.last {
-                                withAnimation(.easeInOut(duration: 0.3)) {
+                                withAnimation(AppConstants.Animation.standard) {
                                     proxy.scrollTo(lastMessage.id, anchor: .bottom)
                                 }
                             }
                         }
                     }
                     
-                    // Input area (floating style)
+                    // Input area (modern style)
                     HStack(spacing: 12) {
                         if #available(iOS 16.0, *) {
                             TextField("Tell us what you need...", text: $messageText, axis: .vertical)
                                 .textFieldStyle(.plain)
                                 .padding(12)
-                                .background(Color(.systemBackground))
-                                .cornerRadius(20)
-                                .shadow(color: Color(.systemGray3), radius: 1, x: 0, y: 1)
+                                .background(AppConstants.Colors.background)
+                                .cornerRadius(AppConstants.CornerRadius.large)
+                                .shadow(color: AppConstants.Colors.primary.opacity(0.08), radius: 1, x: 0, y: 1)
                                 .focused($isTextFieldFocused)
                         } else {
                             TextField("Tell us what you need...", text: $messageText)
                                 .textFieldStyle(.plain)
                                 .padding(12)
-                                .background(Color(.systemBackground))
-                                .cornerRadius(20)
-                                .shadow(color: Color(.systemGray3), radius: 1, x: 0, y: 1)
+                                .background(AppConstants.Colors.background)
+                                .cornerRadius(AppConstants.CornerRadius.large)
+                                .shadow(color: AppConstants.Colors.primary.opacity(0.08), radius: 1, x: 0, y: 1)
                                 .focused($isTextFieldFocused)
                         }
                         
-                        Button(action: sendMessage) {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .font(.system(size: 32))
-                                .foregroundColor(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .gray : .teal)
-                                .shadow(color: .teal.opacity(0.2), radius: 2, x: 0, y: 1)
+                        ModernButton(title: "Send", icon: "arrow.up.circle.fill", color: messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .gray : AppConstants.Colors.primary) {
+                            sendMessage()
                         }
                         .disabled(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .frame(maxWidth: 120)
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 8)

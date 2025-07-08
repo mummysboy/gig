@@ -33,6 +33,7 @@
 		A016036C2E1C689E0094741D /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A016036D2E1C689E0094741D /* AIService.swift */; };
 		A016036E2E1C689E0094741D /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = A016036F2E1C689E0094741D /* Config.swift */; };
 		A09603DE2E1C959D005D08B3 /* UserProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A09603DD2E1C959D005D08B3 /* UserProfileView.swift */; };
+		A0C558762E1CBFE4009F98C9 /* UIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C558752E1CBFE4009F98C9 /* UIComponents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -64,6 +65,7 @@
 		A016036D2E1C689E0094741D /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
 		A016036F2E1C689E0094741D /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		A09603DD2E1C959D005D08B3 /* UserProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfileView.swift; sourceTree = "<group>"; };
+		A0C558752E1CBFE4009F98C9 /* UIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIComponents.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -130,6 +132,7 @@
 		A01603442E1C689E0094741D /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				A0C558752E1CBFE4009F98C9 /* UIComponents.swift */,
 				A01603422E1C689E0094741D /* Constants.swift */,
 				A01603432E1C689E0094741D /* Extensions.swift */,
 			);
@@ -237,6 +240,7 @@
 				A016035C2E1C689E0094741D /* ChatView.swift in Sources */,
 				A016035D2E1C689E0094741D /* MessagesView.swift in Sources */,
 				A016035E2E1C689E0094741D /* ConversationService.swift in Sources */,
+				A0C558762E1CBFE4009F98C9 /* UIComponents.swift in Sources */,
 				A016035F2E1C689E0094741D /* Call.swift in Sources */,
 				A01603602E1C689E0094741D /* ProviderProfileView.swift in Sources */,
 				A01603612E1C689E0094741D /* Extensions.swift in Sources */,

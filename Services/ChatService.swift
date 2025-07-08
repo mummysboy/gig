@@ -44,6 +44,7 @@ class ChatService: ObservableObject {
             messages.append(aiMessage)
             
         } catch {
+            print("[ChatService] AI call failed with error: \(error)")
             // Fallback to mock analysis if AI fails
             let mockAnalysis = aiService.getMockAnalysis(for: userMessage)
             let suggestedProviders = mapRecommendationsToProviders(mockAnalysis.recommendations)
@@ -55,6 +56,7 @@ class ChatService: ObservableObject {
             )
             
             messages.append(aiMessage)
+            print("[ChatService] Fallback triggered. Config valid: \(Config.validateConfiguration())")
             self.error = "Using fallback analysis. Set up your OpenAI API key for full AI capabilities."
         }
         

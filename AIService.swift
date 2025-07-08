@@ -145,6 +145,7 @@ class AIService: ObservableObject {
             return analysisResult
             
         } catch {
+            print("[AIService] OpenAI API error (parsing): \(error)")
             throw AIError.parsingError
         }
     }
@@ -283,6 +284,51 @@ class AIService: ObservableObject {
                 confidence: 0.5
             )
         }
+    }
+    
+    /// Enhances a service description using AI, given the service name and user description.
+    func enhanceServiceDescription(name: String, description: String) async throws -> String {
+        let prompt = """
+        You are an expert copywriter for a service marketplace app. Improve the following service description to make it more compelling, clear, and professional. Use the service name for context. Do not change the meaning, just enhance the language. Return only the improved description, nothing else.
+        
+        Service Name: \(name)
+        User Description: \(description)
+        """
+        let request = OpenAIRequest(
+            model: Config.openAIModel,
+            messages: [
+                OpenAIMessage(role: "system", content: "You are a helpful assistant."),
+                OpenAIMessage(role: "user", content: prompt)
+            ],
+            maxTokens: 200,
+            temperature: 0.7
+        )
+        guard let url = URL(string: baseURL) else {
+            throw AIError.invalidURL
+        }
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        do {
+            urlRequest.httpBody = try JSONEncoder().encode(request)
+        } catch {
+            throw AIError.encodingError
+        }
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AIError.invalidResponse
+        }
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw AIError.apiError("HTTP \(httpResponse.statusCode): \(errorMessage)")
+        }
+        let openAIResponse = try JSONDecoder().decode(OpenAIResponse.self, from: data)
+        guard let content = openAIResponse.choices.first?.message.content else {
+            throw AIError.noContent
+        }
+        // Return the improved description directly
+        return content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
