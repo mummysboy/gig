@@ -6,192 +6,344 @@ struct ProviderProfileView: View {
     var onMessage: (() -> Void)? = nil
     var onCall: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
+    @State private var showingFullBio = false
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    headerSection
-                    Divider().padding(.horizontal)
-                    actionButtonsSection
-                    Divider().padding(.horizontal)
-                    servicesSection
-                    Divider().padding(.horizontal)
-                    detailsSection
-                    Divider().padding(.horizontal)
-                    contactSection
-                }
-                .padding(.vertical)
-            }
-            .navigationTitle(provider.name)
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar(content: {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+            GeometryReader { geometry in
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        // Hero Section with Gradient Background
+                        heroSection(geometry: geometry)
+                        
+                        // Content Section
+                        contentSection
                     }
                 }
-            })
-        }
-    }
-
-    private var headerSection: some View {
-        VStack(spacing: 16) {
-            profileImage
-                .frame(width: 120, height: 120)
+                .ignoresSafeArea(edges: .top)
+            }
+            .navigationBarHidden(true)
+            .overlay(alignment: .topTrailing) {
+                // Modern close button
+                IconButton(icon: "xmark", style: .ghost, size: .medium) {
+                    dismiss()
+                }
+                .background(.ultraThinMaterial)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(Color.teal, lineWidth: 3))
-                .shadow(radius: 4)
-
-            Text(provider.name)
-                .font(.title2).fontWeight(.bold)
-
-            if !provider.categories.isEmpty {
-                Text(provider.categories.joined(separator: ", "))
-                    .font(.subheadline).foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            if !provider.services.isEmpty {
-                Text(provider.services.map { $0.name }.joined(separator: ", "))
-                    .font(.subheadline).foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            HStack(spacing: 4) {
-                Image(systemName: "star.fill").foregroundColor(.yellow)
-                Text(String(format: "%.2f", provider.rating)).fontWeight(.semibold)
-                Text("(\(provider.reviewCount) reviews)").foregroundColor(.secondary)
-            }.font(.subheadline)
-
-            Label(provider.isAvailable ? "Available" : "Busy",
-                  systemImage: provider.isAvailable ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .font(.caption)
-                .foregroundColor(provider.isAvailable ? .green : .red)
-        }
-        .padding()
-    }
-
-    private var profileImage: some View {
-        let urlString = provider.profileImageURL
-        if !urlString.isEmpty, let url = URL(string: urlString), url.scheme != nil {
-            return AnyView(
-                AsyncImage(url: url) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Image(systemName: "person.crop.circle.badge.exclam")
-                        .resizable().foregroundColor(.gray)
-                }
-            )
-        }
-        return AnyView(
-            Image(systemName: "person.crop.circle.badge.exclam")
-                .resizable().foregroundColor(.gray)
-        )
-    }
-
-    private var actionButtonsSection: some View {
-        VStack(spacing: 12) {
-            Button(action: {
-                onCall?()
-                dismiss()
-            }) {
-                Label("Call \(provider.name)", systemImage: "phone.fill")
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color.teal)
-                    .cornerRadius(12)
-            }
-
-            Button(action: {
-                onMessage?()
-                dismiss()
-            }) {
-                Label("Send Message", systemImage: "message.fill")
-                    .foregroundColor(.teal)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(Color.teal.opacity(0.1))
-                    .cornerRadius(12)
+                .padding(AppConstants.Spacing.md)
             }
         }
-        .padding(.horizontal)
     }
-
-    private var servicesSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Services").font(.headline).fontWeight(.semibold)
-                .padding(.horizontal)
-
-            ForEach(provider.services) { service in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(service.name).font(.subheadline).fontWeight(.medium)
-                    if !service.description.isEmpty {
-                        Text(service.description).font(.caption).foregroundColor(.secondary)
+    
+    private func heroSection(geometry: GeometryProxy) -> some View {
+        ZStack(alignment: .bottom) {
+            // Background gradient
+            AppConstants.Colors.primaryGradient
+                .frame(height: geometry.size.height * 0.4)
+            
+            // Content
+            VStack(spacing: AppConstants.Spacing.lg) {
+                Spacer()
+                
+                // Profile Image
+                AvatarView(
+                    imageURL: provider.profileImageURL,
+                    name: provider.name,
+                    size: .extraLarge,
+                    status: provider.isAvailable ? .online : .offline
+                )
+                .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+                
+                // Basic Info
+                VStack(spacing: AppConstants.Spacing.sm) {
+                    Text(provider.name)
+                        .font(AppConstants.Typography.headlineMedium)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                    
+                    HStack(spacing: AppConstants.Spacing.sm) {
+                        if !provider.categories.isEmpty {
+                            ForEach(provider.categories.prefix(2), id: \.self) { category in
+                                BadgeView(text: category, style: .secondary)
+                            }
+                        }
+                    }
+                    
+                    // Rating
+                    HStack(spacing: AppConstants.Spacing.xs) {
+                        ForEach(0..<5) { index in
+                            Image(systemName: index < Int(provider.rating) ? "star.fill" : "star")
+                                .foregroundColor(.yellow)
+                                .font(.system(size: 16))
+                        }
+                        Text(String(format: "%.1f", provider.rating))
+                            .font(AppConstants.Typography.titleMedium)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                        Text("(\(provider.reviewCount) reviews)")
+                            .font(AppConstants.Typography.labelMedium)
+                            .foregroundColor(.white.opacity(0.8))
                     }
                 }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                .padding(.horizontal)
-                .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
-            }
-        }
-    }
-
-    private var detailsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "dollarsign.circle.fill").foregroundColor(.teal)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Hourly Rate").font(.caption).foregroundColor(.secondary)
-                    Text("$\(String(format: "%.2f", provider.hourlyRate))/hour")
-                        .font(.headline).fontWeight(.semibold)
-                }
+                
                 Spacer()
             }
-
+            .padding(AppConstants.Spacing.screenPadding)
+        }
+    }
+    
+    private var contentSection: some View {
+        VStack(spacing: AppConstants.Spacing.lg) {
+            // Action Buttons
+            actionButtonsSection
+                .padding(.horizontal, AppConstants.Spacing.screenPadding)
+                .padding(.top, AppConstants.Spacing.lg)
+            
+            // Quick Info Cards
+            quickInfoSection
+                .padding(.horizontal, AppConstants.Spacing.screenPadding)
+            
+            // Services Section
+            if !provider.services.isEmpty {
+                servicesSection
+                    .padding(.horizontal, AppConstants.Spacing.screenPadding)
+            }
+            
+            // Bio Section
             if !provider.bio.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("About").font(.headline).fontWeight(.semibold)
-                    Text(provider.bio).font(.body).foregroundColor(.secondary)
+                bioSection
+                    .padding(.horizontal, AppConstants.Spacing.screenPadding)
+            }
+            
+            // Contact Section
+            contactSection
+                .padding(.horizontal, AppConstants.Spacing.screenPadding)
+                .padding(.bottom, AppConstants.Spacing.xxxl)
+        }
+    }
+    
+    private var actionButtonsSection: some View {
+        HStack(spacing: AppConstants.Spacing.md) {
+            ModernButton(
+                title: "Call",
+                icon: "phone.fill",
+                style: .primary,
+                size: .large
+            ) {
+                onCall?()
+                dismiss()
+            }
+            
+            ModernButton(
+                title: "Message",
+                icon: "message.fill",
+                style: .secondary,
+                size: .large
+            ) {
+                onMessage?()
+                dismiss()
+            }
+        }
+    }
+    
+    private var quickInfoSection: some View {
+        HStack(spacing: AppConstants.Spacing.md) {
+            // Rate Card
+            CardView(style: .elevated) {
+                VStack(spacing: AppConstants.Spacing.xs) {
+                    HStack {
+                        Image(systemName: "dollarsign.circle.fill")
+                            .foregroundColor(AppConstants.Colors.success)
+                            .font(.system(size: 20))
+                        Spacer()
+                    }
+                    
+                    VStack(alignment: .leading, spacing: AppConstants.Spacing.xxs) {
+                        Text("$\(provider.hourlyRate)/hr")
+                            .font(AppConstants.Typography.titleLarge)
+                            .fontWeight(.bold)
+                            .foregroundColor(AppConstants.Colors.text)
+                        Text("Hourly Rate")
+                            .font(AppConstants.Typography.labelMedium)
+                            .foregroundColor(AppConstants.Colors.textSecondary)
+                    }
+                }
+            }
+            
+            // Availability Card
+            CardView(style: .elevated) {
+                VStack(spacing: AppConstants.Spacing.xs) {
+                    HStack {
+                        StatusIndicator(status: provider.isAvailable ? .online : .offline)
+                        Spacer()
+                    }
+                    
+                    VStack(alignment: .leading, spacing: AppConstants.Spacing.xxs) {
+                        Text(provider.isAvailable ? "Available" : "Busy")
+                            .font(AppConstants.Typography.titleLarge)
+                            .fontWeight(.bold)
+                            .foregroundColor(AppConstants.Colors.text)
+                        Text("Status")
+                            .font(AppConstants.Typography.labelMedium)
+                            .foregroundColor(AppConstants.Colors.textSecondary)
+                    }
                 }
             }
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .padding(.horizontal)
     }
-
+    
+    private var servicesSection: some View {
+        VStack(alignment: .leading, spacing: AppConstants.Spacing.md) {
+            SectionHeader(
+                title: "Services",
+                subtitle: "What \(provider.name) offers"
+            )
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: AppConstants.Spacing.sm) {
+                ForEach(provider.services) { service in
+                    ServiceCard(service: service)
+                }
+            }
+        }
+    }
+    
+    private var bioSection: some View {
+        VStack(alignment: .leading, spacing: AppConstants.Spacing.md) {
+            SectionHeader(
+                title: "About",
+                subtitle: "Get to know \(provider.name)"
+            )
+            
+            CardView(style: .elevated) {
+                VStack(alignment: .leading, spacing: AppConstants.Spacing.sm) {
+                    Text(showingFullBio ? provider.bio : String(provider.bio.prefix(150)) + (provider.bio.count > 150 ? "..." : ""))
+                        .font(AppConstants.Typography.bodyMedium)
+                        .foregroundColor(AppConstants.Colors.text)
+                        .lineSpacing(2)
+                    
+                    if provider.bio.count > 150 {
+                        Button(action: { showingFullBio.toggle() }) {
+                            Text(showingFullBio ? "Show less" : "Read more")
+                                .font(AppConstants.Typography.labelLarge)
+                                .fontWeight(.medium)
+                                .foregroundColor(AppConstants.Colors.primary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     private var contactSection: some View {
-        HStack {
-            Image(systemName: "location.circle.fill").foregroundColor(.teal)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Current Location").font(.caption).foregroundColor(.secondary)
-                if let location = provider.location {
-                    Text("\(String(format: "%.4f", location.latitude)), \(String(format: "%.4f", location.longitude))")
-                        .font(.subheadline)
-                } else {
-                    Text("No location").font(.subheadline).foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: AppConstants.Spacing.md) {
+            SectionHeader(
+                title: "Contact Info",
+                subtitle: "How to reach \(provider.name)"
+            )
+            
+            CardView(style: .elevated) {
+                VStack(spacing: AppConstants.Spacing.md) {
+                    if let location = provider.location {
+                        ContactInfoRow(
+                            icon: "location.circle.fill",
+                            iconColor: AppConstants.Colors.error,
+                            title: "Location",
+                            subtitle: "\(String(format: "%.4f", location.latitude)), \(String(format: "%.4f", location.longitude))"
+                        )
+                    }
+                    
+                    ContactInfoRow(
+                        icon: "calendar.circle.fill",
+                        iconColor: AppConstants.Colors.info,
+                        title: "Member Since",
+                        subtitle: formatDate(provider.joinDate)
+                    )
+                    
+                    if provider.isVerified {
+                        ContactInfoRow(
+                            icon: "checkmark.seal.fill",
+                            iconColor: AppConstants.Colors.success,
+                            title: "Verified Provider",
+                            subtitle: "Identity and skills verified"
+                        )
+                    }
                 }
             }
-            Spacer()
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .padding(.horizontal)
     }
-
-    private var providerReviews: [ProviderReview]? {
-        return [
-            ProviderReview(reviewerName: "Sarah M.", rating: 5, text: "Excellent service! Very professional and completed the work on time. Highly recommend!", dateString: "July 4, 2025")
-        ]
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
     }
 }
 
+// MARK: - Service Card Component
+struct ServiceCard: View {
+    let service: Service
+    
+    var body: some View {
+        CardView(style: .flat, padding: AppConstants.Spacing.md) {
+            VStack(alignment: .leading, spacing: AppConstants.Spacing.xs) {
+                HStack {
+                    Image(systemName: "wrench.and.screwdriver.fill")
+                        .foregroundColor(AppConstants.Colors.primary)
+                        .font(.system(size: 16))
+                    Spacer()
+                }
+                
+                Text(service.name)
+                    .font(AppConstants.Typography.titleMedium)
+                    .fontWeight(.semibold)
+                    .foregroundColor(AppConstants.Colors.text)
+                    .lineLimit(2)
+                
+                if !service.description.isEmpty {
+                    Text(service.description)
+                        .font(AppConstants.Typography.bodySmall)
+                        .foregroundColor(AppConstants.Colors.textSecondary)
+                        .lineLimit(3)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Contact Info Row Component
+struct ContactInfoRow: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let subtitle: String
+    
+    var body: some View {
+        HStack(spacing: AppConstants.Spacing.md) {
+            Image(systemName: icon)
+                .foregroundColor(iconColor)
+                .font(.system(size: 20))
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: AppConstants.Spacing.xxs) {
+                Text(title)
+                    .font(AppConstants.Typography.titleMedium)
+                    .fontWeight(.medium)
+                    .foregroundColor(AppConstants.Colors.text)
+                
+                Text(subtitle)
+                    .font(AppConstants.Typography.bodyMedium)
+                    .foregroundColor(AppConstants.Colors.textSecondary)
+            }
+            
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Modern Profile Edit View
 struct ProviderProfileEditView: View {
     @State private var profileImage: UIImage? = nil
     @State private var showImagePicker = false
@@ -207,77 +359,31 @@ struct ProviderProfileEditView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Profile Image
-                    VStack(spacing: 8) {
-                        ZStack(alignment: .bottomTrailing) {
-                            Group {
-                                if let image = profileImage {
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                } else {
-                                    Image(systemName: "person.crop.circle.fill")
-                                        .resizable()
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                            .frame(width: 120, height: 120)
-                            .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.teal, lineWidth: 3))
-                            .shadow(radius: 4)
-                            Button(action: { showImagePicker = true }) {
-                                Image(systemName: "camera.fill")
-                                    .font(.system(size: 20))
-                                    .padding(8)
-                                    .background(Color.white)
-                                    .clipShape(Circle())
-                                    .shadow(radius: 2)
-                            }
-                            .offset(x: 8, y: 8)
-                        }
-                        Text("Edit Photo")
-                            .font(.caption)
-                            .foregroundColor(.teal)
-                    }
-                    .padding(.top, 16)
-
-                    // Editable Fields
-                    Group {
-                        ProfileEditField(title: "Name", text: $name, icon: "person.fill")
-                        ProfileEditField(title: "Email", text: $email, icon: "envelope.fill", keyboardType: .emailAddress)
-                        ProfileEditField(title: "Bio", text: $bio, icon: "quote.bubble.fill", isMultiline: true)
-                        ProfileEditField(title: "Skills (comma separated)", text: $skills, icon: "star.fill")
-                        ProfileEditField(title: "Categories (comma separated)", text: $categories, icon: "tag.fill")
-                        ProfileEditField(title: "Hourly Rate", text: $hourlyRate, icon: "dollarsign.circle.fill", keyboardType: .decimalPad)
-                        Toggle(isOn: $isAvailable) {
-                            Label("Available for work", systemImage: "checkmark.circle.fill")
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                    }
-
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: AppConstants.Spacing.xl) {
+                    // Profile Image Section
+                    profileImageSection
+                    
+                    // Form Fields
+                    formFieldsSection
+                    
+                    // Settings Section
+                    settingsSection
+                    
                     // Save Button
-                    Button(action: saveProfile) {
-                        Text("Save Profile")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.teal)
-                            .cornerRadius(14)
-                    }
-                    .padding(.top, 8)
+                    saveButtonSection
                 }
-                .padding()
+                .padding(.horizontal, AppConstants.Spacing.screenPadding)
+                .padding(.vertical, AppConstants.Spacing.lg)
             }
+            .background(AppConstants.Colors.background)
             .navigationTitle("Edit Profile")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar(content: {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
+                    IconButton(icon: "xmark", style: .ghost, size: .medium) {
+                        dismiss()
+                    }
                 }
             })
             .sheet(isPresented: $showImagePicker) {
@@ -285,12 +391,109 @@ struct ProviderProfileEditView: View {
             }
         }
     }
+    
+    private var profileImageSection: some View {
+        VStack(spacing: AppConstants.Spacing.md) {
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    if let image = profileImage {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else {
+                        ZStack {
+                            Circle()
+                                .fill(AppConstants.Colors.primaryGradient)
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(.white)
+                        }
+                    }
+                }
+                .frame(width: 120, height: 120)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(AppConstants.Colors.primary.opacity(0.2), lineWidth: 3)
+                )
+                .shadow(color: AppConstants.Shadow.lg.color, radius: AppConstants.Shadow.lg.radius, x: 0, y: 4)
+                
+                IconButton(icon: "camera.fill", style: .primary, size: .small) {
+                    showImagePicker = true
+                }
+                .offset(x: 8, y: 8)
+            }
+            
+            Text("Profile Photo")
+                .font(AppConstants.Typography.labelMedium)
+                .foregroundColor(AppConstants.Colors.textSecondary)
+        }
+        .padding(.top, AppConstants.Spacing.lg)
+    }
+    
+    private var formFieldsSection: some View {
+        VStack(spacing: AppConstants.Spacing.lg) {
+            SectionHeader(title: "Basic Information")
+            
+            VStack(spacing: AppConstants.Spacing.md) {
+                ModernTextField(title: "Name", text: $name, icon: "person.fill")
+                ModernTextField(title: "Email", text: $email, icon: "envelope.fill", keyboardType: .emailAddress)
+                ModernTextField(title: "Bio", text: $bio, icon: "quote.bubble.fill", isMultiline: true)
+                ModernTextField(title: "Skills (comma separated)", text: $skills, icon: "star.fill")
+                ModernTextField(title: "Categories (comma separated)", text: $categories, icon: "tag.fill")
+                ModernTextField(title: "Hourly Rate", text: $hourlyRate, icon: "dollarsign.circle.fill", keyboardType: .decimalPad)
+            }
+        }
+    }
+    
+    private var settingsSection: some View {
+        VStack(spacing: AppConstants.Spacing.lg) {
+            SectionHeader(title: "Settings")
+            
+            CardView(style: .elevated) {
+                Toggle(isOn: $isAvailable) {
+                    HStack(spacing: AppConstants.Spacing.md) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(isAvailable ? AppConstants.Colors.success : AppConstants.Colors.textSecondary)
+                            .font(.system(size: 20))
+                        
+                        VStack(alignment: .leading, spacing: AppConstants.Spacing.xxs) {
+                            Text("Available for work")
+                                .font(AppConstants.Typography.titleMedium)
+                                .fontWeight(.medium)
+                                .foregroundColor(AppConstants.Colors.text)
+                            
+                            Text("Show as available to clients")
+                                .font(AppConstants.Typography.bodySmall)
+                                .foregroundColor(AppConstants.Colors.textSecondary)
+                        }
+                        
+                        Spacer()
+                    }
+                }
+                .toggleStyle(SwitchToggleStyle(tint: AppConstants.Colors.primary))
+            }
+        }
+    }
+    
+    private var saveButtonSection: some View {
+        ModernButton(
+            title: "Save Profile",
+            icon: "checkmark.circle.fill",
+            style: .primary,
+            size: .large
+        ) {
+            saveProfile()
+        }
+        .padding(.top, AppConstants.Spacing.md)
+    }
 
     private func saveProfile() {
         // Convert skills and categories to arrays
         let skillsArray = skills.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         let categoriesArray = categories.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         let rate = Double(hourlyRate) ?? 0.0
+        
         let provider = Provider(
             id: UUID().uuidString,
             name: name,
@@ -307,43 +510,61 @@ struct ProviderProfileEditView: View {
             isVerified: false,
             joinDate: Date()
         )
+        
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
         onSave?(provider)
         dismiss()
     }
 }
 
-struct ProfileEditField: View {
+// MARK: - Modern Text Field Component
+struct ModernTextField: View {
     let title: String
     @Binding var text: String
     var icon: String? = nil
     var isMultiline: Bool = false
     var keyboardType: UIKeyboardType = .default
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let icon = icon {
-                Label(title, systemImage: icon)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } else {
+        VStack(alignment: .leading, spacing: AppConstants.Spacing.xs) {
+            HStack(spacing: AppConstants.Spacing.xs) {
+                if let icon = icon {
+                    Image(systemName: icon)
+                        .foregroundColor(AppConstants.Colors.primary)
+                        .font(.system(size: 14))
+                }
                 Text(title)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(AppConstants.Typography.labelMedium)
+                    .fontWeight(.medium)
+                    .foregroundColor(AppConstants.Colors.text)
             }
+            
             if isMultiline {
                 TextEditor(text: $text)
-                    .frame(minHeight: 60, maxHeight: 120)
-                    .padding(8)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
+                    .frame(minHeight: 80, maxHeight: 120)
+                    .padding(AppConstants.Spacing.sm)
+                    .background(AppConstants.Colors.secondaryBackground)
+                    .cornerRadius(AppConstants.CornerRadius.md)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppConstants.CornerRadius.md)
+                            .stroke(AppConstants.Colors.primary.opacity(0.2), lineWidth: 1)
+                    )
             } else {
                 TextField(title, text: $text)
                     .keyboardType(keyboardType)
-                    .padding(12)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
+                    .font(AppConstants.Typography.bodyMedium)
+                    .padding(AppConstants.Spacing.md)
+                    .background(AppConstants.Colors.secondaryBackground)
+                    .cornerRadius(AppConstants.CornerRadius.md)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppConstants.CornerRadius.md)
+                            .stroke(AppConstants.Colors.primary.opacity(0.2), lineWidth: 1)
+                    )
             }
         }
-        .padding(.vertical, 4)
     }
 }
 
