@@ -1,34 +1,30 @@
 import SwiftUI
+import PhotosUI
 
 struct ProviderProfileView: View {
     let provider: Provider
     var onMessage: (() -> Void)? = nil
     var onCall: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 0) {
-                    // Header with profile image and basic info
+                VStack(spacing: 24) {
                     headerSection
-                    
-                    // Action buttons
+                    Divider().padding(.horizontal)
                     actionButtonsSection
-                    
-                    // Services
+                    Divider().padding(.horizontal)
                     servicesSection
-                    
-                    // Bio and details
+                    Divider().padding(.horizontal)
                     detailsSection
-                    
-                    // Contact and location
+                    Divider().padding(.horizontal)
                     contactSection
                 }
+                .padding(.vertical)
             }
             .navigationTitle(provider.name)
             .navigationBarTitleDisplayMode(.large)
-            .navigationBarBackButtonHidden(false)
             .toolbar(content: {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
@@ -38,214 +34,147 @@ struct ProviderProfileView: View {
             })
         }
     }
-    
+
     private var headerSection: some View {
-        VStack(spacing: 20) {
-            // Profile image
+        VStack(spacing: 16) {
             profileImage
                 .frame(width: 120, height: 120)
                 .clipShape(Circle())
-                .overlay(
-                    Circle()
-                        .stroke(Color.teal, lineWidth: 3)
-                )
+                .overlay(Circle().stroke(Color.teal, lineWidth: 3))
+                .shadow(radius: 4)
 
-            // Name and services
-            VStack(spacing: 8) {
-                Text(provider.name)
-                    .font(.title2)
-                    .fontWeight(.bold)
+            Text(provider.name)
+                .font(.title2).fontWeight(.bold)
 
-                // Show all categories as a comma-separated list
-                if !provider.categories.isEmpty {
-                    Text(provider.categories.joined(separator: ", "))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-
-                Text(provider.services.map { $0.name }.joined(separator: ", "))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+            if !provider.categories.isEmpty {
+                Text(provider.categories.joined(separator: ", "))
+                    .font(.subheadline).foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-
-                // Rating
-                HStack(spacing: 4) {
-                    Image(systemName: "star.fill")
-                        .foregroundColor(.yellow)
-                    Text(String(format: "%.2f", provider.rating))
-                        .fontWeight(.semibold)
-                    Text("(\(provider.reviewCount) reviews)")
-                        .foregroundColor(.secondary)
-                }
-                .font(.subheadline)
             }
 
-            // Availability status
-            HStack {
-                Circle()
-                    .fill(provider.isAvailable ? Color.green : Color.red)
-                    .frame(width: 8, height: 8)
-
-                Text(provider.isAvailable ? "Available" : "Busy")
-                    .font(.caption)
-                    .foregroundColor(provider.isAvailable ? .green : .red)
+            if !provider.services.isEmpty {
+                Text(provider.services.map { $0.name }.joined(separator: ", "))
+                    .font(.subheadline).foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
             }
+
+            HStack(spacing: 4) {
+                Image(systemName: "star.fill").foregroundColor(.yellow)
+                Text(String(format: "%.2f", provider.rating)).fontWeight(.semibold)
+                Text("(\(provider.reviewCount) reviews)").foregroundColor(.secondary)
+            }.font(.subheadline)
+
+            Label(provider.isAvailable ? "Available" : "Busy",
+                  systemImage: provider.isAvailable ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.caption)
+                .foregroundColor(provider.isAvailable ? .green : .red)
         }
         .padding()
-        .background(Color(.systemBackground))
     }
 
     private var profileImage: some View {
         let urlString = provider.profileImageURL
-        if !urlString.isEmpty, 
-           let url = URL(string: urlString),
-           url.scheme != nil {
+        if !urlString.isEmpty, let url = URL(string: urlString), url.scheme != nil {
             return AnyView(
                 AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
+                    image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
-                    Image(systemName: "person.circle.fill")
-                        .resizable()
-                        .foregroundColor(.gray)
-                }
-                .onAppear {
-                    print("[ProviderProfileView] Loading profile image for \(provider.name) from: \(url)")
+                    Image(systemName: "person.crop.circle.badge.exclam")
+                        .resizable().foregroundColor(.gray)
                 }
             )
         }
         return AnyView(
-            Image(systemName: "person.circle.fill")
-                .resizable()
-                .foregroundColor(.gray)
-                .onAppear {
-                    print("[ProviderProfileView] Using fallback image for \(provider.name). URL was: \(urlString)")
-                }
+            Image(systemName: "person.crop.circle.badge.exclam")
+                .resizable().foregroundColor(.gray)
         )
     }
-    
+
     private var actionButtonsSection: some View {
         VStack(spacing: 12) {
-            // Call button
             Button(action: {
                 onCall?()
                 dismiss()
             }) {
-                HStack {
-                    Image(systemName: "phone.fill")
-                    Text("Call \(provider.name)")
-                        .fontWeight(.semibold)
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(Color.teal)
-                .cornerRadius(12)
+                Label("Call \(provider.name)", systemImage: "phone.fill")
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color.teal)
+                    .cornerRadius(12)
             }
-            
-            // Message button
+
             Button(action: {
                 onMessage?()
                 dismiss()
             }) {
-                HStack {
-                    Image(systemName: "message.fill")
-                    Text("Send Message")
-                        .fontWeight(.medium)
-                }
-                .foregroundColor(.teal)
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-                .background(Color.teal.opacity(0.1))
-                .cornerRadius(12)
+                Label("Send Message", systemImage: "message.fill")
+                    .foregroundColor(.teal)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(Color.teal.opacity(0.1))
+                    .cornerRadius(12)
             }
         }
         .padding(.horizontal)
     }
-    
+
     private var servicesSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Services")
-                .font(.headline)
-                .fontWeight(.semibold)
+            Text("Services").font(.headline).fontWeight(.semibold)
                 .padding(.horizontal)
-            
+
             ForEach(provider.services) { service in
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(service.name)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-                    
+                    Text(service.name).font(.subheadline).fontWeight(.medium)
                     if !service.description.isEmpty {
-                        Text(service.description)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(nil)
+                        Text(service.description).font(.caption).foregroundColor(.secondary)
                     }
                 }
                 .padding()
                 .background(Color(.systemGray6))
-                .cornerRadius(8)
+                .cornerRadius(12)
                 .padding(.horizontal)
+                .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
             }
         }
-        .padding(.vertical)
     }
-    
+
     private var detailsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Hourly rate
             HStack {
-                Image(systemName: "dollarsign.circle.fill")
-                    .foregroundColor(.teal)
+                Image(systemName: "dollarsign.circle.fill").foregroundColor(.teal)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Hourly Rate")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    Text("Hourly Rate").font(.caption).foregroundColor(.secondary)
                     Text("$\(String(format: "%.2f", provider.hourlyRate))/hour")
-                        .font(.headline)
-                        .fontWeight(.semibold)
+                        .font(.headline).fontWeight(.semibold)
                 }
                 Spacer()
             }
-            
-            // Bio
+
             if !provider.bio.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("About")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                    
-                    Text(provider.bio)
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .lineLimit(nil)
+                    Text("About").font(.headline).fontWeight(.semibold)
+                    Text(provider.bio).font(.body).foregroundColor(.secondary)
                 }
             }
         }
         .padding()
         .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .padding(.horizontal)
     }
-    
+
     private var contactSection: some View {
         HStack {
-            Image(systemName: "location.circle.fill")
-                .foregroundColor(.teal)
+            Image(systemName: "location.circle.fill").foregroundColor(.teal)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Current Location")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                Text("Current Location").font(.caption).foregroundColor(.secondary)
                 if let location = provider.location {
                     Text("\(String(format: "%.4f", location.latitude)), \(String(format: "%.4f", location.longitude))")
                         .font(.subheadline)
-                        .foregroundColor(.primary)
                 } else {
-                    Text("No location")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    Text("No location").font(.subheadline).foregroundColor(.secondary)
                 }
             }
             Spacer()
@@ -256,12 +185,187 @@ struct ProviderProfileView: View {
         .padding(.horizontal)
     }
 
-    // Mock reviews for display
     private var providerReviews: [ProviderReview]? {
-        // Replace with real data source if available
         return [
             ProviderReview(reviewerName: "Sarah M.", rating: 5, text: "Excellent service! Very professional and completed the work on time. Highly recommend!", dateString: "July 4, 2025")
         ]
+    }
+}
+
+struct ProviderProfileEditView: View {
+    @State private var profileImage: UIImage? = nil
+    @State private var showImagePicker = false
+    @State private var name: String = ""
+    @State private var email: String = ""
+    @State private var bio: String = ""
+    @State private var skills: String = ""
+    @State private var categories: String = ""
+    @State private var hourlyRate: String = ""
+    @State private var isAvailable: Bool = true
+    @Environment(\.dismiss) private var dismiss
+    var onSave: ((Provider) -> Void)? = nil
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Profile Image
+                    VStack(spacing: 8) {
+                        ZStack(alignment: .bottomTrailing) {
+                            Group {
+                                if let image = profileImage {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                } else {
+                                    Image(systemName: "person.crop.circle.fill")
+                                        .resizable()
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                            .frame(width: 120, height: 120)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.teal, lineWidth: 3))
+                            .shadow(radius: 4)
+                            Button(action: { showImagePicker = true }) {
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 20))
+                                    .padding(8)
+                                    .background(Color.white)
+                                    .clipShape(Circle())
+                                    .shadow(radius: 2)
+                            }
+                            .offset(x: 8, y: 8)
+                        }
+                        Text("Edit Photo")
+                            .font(.caption)
+                            .foregroundColor(.teal)
+                    }
+                    .padding(.top, 16)
+
+                    // Editable Fields
+                    Group {
+                        ProfileEditField(title: "Name", text: $name, icon: "person.fill")
+                        ProfileEditField(title: "Email", text: $email, icon: "envelope.fill", keyboardType: .emailAddress)
+                        ProfileEditField(title: "Bio", text: $bio, icon: "quote.bubble.fill", isMultiline: true)
+                        ProfileEditField(title: "Skills (comma separated)", text: $skills, icon: "star.fill")
+                        ProfileEditField(title: "Categories (comma separated)", text: $categories, icon: "tag.fill")
+                        ProfileEditField(title: "Hourly Rate", text: $hourlyRate, icon: "dollarsign.circle.fill", keyboardType: .decimalPad)
+                        Toggle(isOn: $isAvailable) {
+                            Label("Available for work", systemImage: "checkmark.circle.fill")
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                    }
+
+                    // Save Button
+                    Button(action: saveProfile) {
+                        Text("Save Profile")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.teal)
+                            .cornerRadius(14)
+                    }
+                    .padding(.top, 8)
+                }
+                .padding()
+            }
+            .navigationTitle("Edit Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(content: {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            })
+            .sheet(isPresented: $showImagePicker) {
+                ImagePicker(image: $profileImage)
+            }
+        }
+    }
+
+    private func saveProfile() {
+        // Convert skills and categories to arrays
+        let skillsArray = skills.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let categoriesArray = categories.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let rate = Double(hourlyRate) ?? 0.0
+        let provider = Provider(
+            id: UUID().uuidString,
+            name: name,
+            categories: categoriesArray,
+            bio: bio,
+            profileImageURL: "",
+            hourlyRate: Int(rate),
+            rating: 5.0,
+            reviewCount: 0,
+            isAvailable: isAvailable,
+            location: nil,
+            skills: skillsArray,
+            services: [],
+            isVerified: false,
+            joinDate: Date()
+        )
+        onSave?(provider)
+        dismiss()
+    }
+}
+
+struct ProfileEditField: View {
+    let title: String
+    @Binding var text: String
+    var icon: String? = nil
+    var isMultiline: Bool = false
+    var keyboardType: UIKeyboardType = .default
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let icon = icon {
+                Label(title, systemImage: icon)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            if isMultiline {
+                TextEditor(text: $text)
+                    .frame(minHeight: 60, maxHeight: 120)
+                    .padding(8)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(10)
+            } else {
+                TextField(title, text: $text)
+                    .keyboardType(keyboardType)
+                    .padding(12)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(10)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.allowsEditing = true
+        return picker
+    }
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let parent: ImagePicker
+        init(_ parent: ImagePicker) { self.parent = parent }
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let uiImage = info[.editedImage] as? UIImage ?? info[.originalImage] as? UIImage {
+                parent.image = uiImage
+            }
+            picker.dismiss(animated: true)
+        }
     }
 }
 
@@ -275,381 +379,4 @@ struct ProviderReview: Identifiable {
 
 #Preview {
     ProviderProfileView(provider: Provider.sampleData.first!)
-} 
-
-// MARK: - Provider Profile Creation/Edit View
-struct ProviderProfileEditView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var name: String = ""
-    @State private var bio: String = ""
-    @State private var profileImageURL: String = ""
-    @State private var isAvailable: Bool = true
-    @State private var selectedCategories: [String] = []
-    @State private var services: [Service] = []
-    @State private var hourlyRate: String = ""
-    @State private var showCategoryPicker = false
-    @State private var newServiceName: String = ""
-    @State private var newServiceDescription: String = ""
-    @State private var newServiceHourlyRate: String = ""
-    @State private var newServiceFlatRate: String = ""
-    @State private var showAddServiceSheet = false
-    @State private var errorMessage: String?
-    @StateObject private var aiService = AIService()
-
-    var onSave: ((Provider) -> Void)? = nil
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: AppConstants.Spacing.lg) {
-                    // Profile Header Card
-                    CardView {
-                        VStack(spacing: AppConstants.Spacing.md) {
-                            // Profile image
-                            if !profileImageURL.isEmpty, let url = URL(string: profileImageURL), url.scheme != nil {
-                                AsyncImage(url: url) { image in
-                                    image.resizable().aspectRatio(contentMode: .fill)
-                                } placeholder: {
-                                    Image(systemName: "person.circle.fill").resizable().foregroundColor(.gray)
-                                }
-                                .frame(width: 100, height: 100)
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(AppConstants.Colors.primary, lineWidth: 3))
-                            } else {
-                                Image(systemName: "person.circle.fill")
-                                    .resizable()
-                                    .foregroundColor(.gray)
-                                    .frame(width: 100, height: 100)
-                                    .clipShape(Circle())
-                                    .overlay(Circle().stroke(AppConstants.Colors.primary, lineWidth: 3))
-                            }
-                            TextField("Name", text: $name)
-                                .font(AppConstants.Fonts.title2.weight(.bold))
-                                .multilineTextAlignment(.center)
-                            TextField("Bio", text: $bio)
-                                .font(AppConstants.Fonts.body)
-                                .foregroundColor(AppConstants.Colors.secondaryText)
-                                .multilineTextAlignment(.center)
-                            Toggle("Available for work", isOn: $isAvailable)
-                                .toggleStyle(SwitchToggleStyle(tint: AppConstants.Colors.primary))
-                        }
-                    }
-                    // Categories Card
-                    CardView {
-                        VStack(alignment: .leading, spacing: AppConstants.Spacing.md) {
-                            SectionHeader(title: "Categories")
-                            Button(action: { showCategoryPicker = true }) {
-                                HStack {
-                                    Text(selectedCategories.isEmpty ? "Select Categories" : selectedCategories.joined(separator: ", "))
-                                        .foregroundColor(selectedCategories.isEmpty ? .secondary : .primary)
-                                    Spacer()
-                                    Image(systemName: "chevron.right").foregroundColor(.gray)
-                                }
-                            }
-                        }
-                    }
-                    // Services Card
-                    CardView {
-                        VStack(alignment: .leading, spacing: AppConstants.Spacing.md) {
-                            SectionHeader(title: "Services & Pricing")
-                            ForEach(services.indices, id: \.self) { i in
-                                CardView {
-                                    VStack(alignment: .leading, spacing: AppConstants.Spacing.sm) {
-                                        TextField("Service Name", text: $services[i].name)
-                                            .font(AppConstants.Fonts.headline)
-                                        ZStack(alignment: .trailing) {
-                                            TextField("Description", text: $services[i].description)
-                                                .font(AppConstants.Fonts.subheadline)
-                                                .foregroundColor(AppConstants.Colors.secondaryText)
-                                            if services[i].isEnhancing {
-                                                ProgressView().padding(.trailing, 8)
-                                            } else {
-                                                ModernButton(title: "Enhance with AI", icon: "sparkles", color: AppConstants.Colors.primary) {
-                                                    enhanceServiceWithAI(index: i)
-                                                }
-                                                .frame(maxWidth: 180)
-                                                .padding(.trailing, 8)
-                                            }
-                                        }
-                                        if let enhanced = services[i].enhancedDescription, services[i].isShowingEnhanced {
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text("AI Suggestion:")
-                                                    .font(AppConstants.Fonts.caption)
-                                                    .foregroundColor(.teal)
-                                                Text(enhanced)
-                                                    .font(AppConstants.Fonts.subheadline)
-                                                    .foregroundColor(.primary)
-                                                HStack(spacing: 12) {
-                                                    ModernButton(title: "Keep", icon: "checkmark", color: .green) {
-                                                        keepAISuggestion(index: i)
-                                                    }
-                                                    ModernButton(title: "Undo", icon: "arrow.uturn.backward", color: .gray) {
-                                                        undoAISuggestion(index: i)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        if let error = services[i].enhancementError {
-                                            Text(error)
-                                                .font(AppConstants.Fonts.caption)
-                                                .foregroundColor(.red)
-                                        }
-                                        HStack(spacing: 16) {
-                                            Text("$\(String(format: "%.2f", services[i].hourlyRate))/hr")
-                                                .font(AppConstants.Fonts.caption)
-                                                .foregroundColor(.teal)
-                                            if let flat = services[i].flatRate {
-                                                Text("$\(String(format: "%.2f", flat)) flat")
-                                                    .font(AppConstants.Fonts.caption)
-                                                    .foregroundColor(.blue)
-                                            }
-                                        }
-                                    }
-                                }
-                                .padding(.bottom, AppConstants.Spacing.sm)
-                                .swipeActions {
-                                    Button(role: .destructive) {
-                                        services.remove(at: i)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
-                            }
-                            ModernButton(title: "Add Service", icon: "plus", color: AppConstants.Colors.primary) {
-                                showAddServiceSheet = true
-                            }
-                        }
-                    }
-                    if let error = errorMessage {
-                        CardView {
-                            Text(error)
-                                .foregroundColor(.red)
-                                .font(AppConstants.Fonts.body)
-                        }
-                    }
-                }
-                .padding()
-            }
-            .navigationTitle("Edit Profile")
-            .toolbar(content: {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") { saveProfile() }
-                        .disabled(!canSave)
-                }
-            })
-            .sheet(isPresented: $showCategoryPicker) {
-                CategoryPickerView(selected: $selectedCategories)
-            }
-            .sheet(isPresented: $showAddServiceSheet) {
-                NavigationView {
-                    Form {
-                        Section(header: Text("Service Info")) {
-                            TextField("Service Name", text: $newServiceName)
-                            TextField("Description", text: $newServiceDescription)
-                            TextField("Hourly Rate", text: $newServiceHourlyRate)
-                                .keyboardType(.decimalPad)
-                            TextField("Flat Rate (optional)", text: $newServiceFlatRate)
-                                .keyboardType(.decimalPad)
-                        }
-                    }
-                    .navigationTitle("Add Service")
-                    .toolbar(content: {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Button("Cancel") { showAddServiceSheet = false }
-                        }
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Add") { addService() }
-                                .disabled(newServiceName.isEmpty || newServiceHourlyRate.isEmpty)
-                        }
-                    })
-                }
-            }
-        }
-    }
-
-    private var canSave: Bool {
-        !name.isEmpty && !selectedCategories.isEmpty && !services.isEmpty
-    }
-
-    private func saveProfile() {
-        guard let hourly = Double(hourlyRate.isEmpty ? "0" : hourlyRate) else {
-            errorMessage = "Invalid hourly rate."
-            return
-        }
-        let provider = Provider(
-            name: name,
-            categories: selectedCategories,
-            bio: bio,
-            profileImageURL: profileImageURL,
-            hourlyRate: Int(hourly),
-            rating: 0.0,
-            reviewCount: 0,
-            isAvailable: isAvailable,
-            services: services
-        )
-        // Add to provider pool (in-memory for now)
-        Provider.addToPool(provider)
-        onSave?(provider)
-        dismiss()
-    }
-
-    private func addService() {
-        guard let hourly = Double(newServiceHourlyRate) else { return }
-        let flat = Double(newServiceFlatRate)
-        let service = Service(
-            name: newServiceName,
-            description: newServiceDescription,
-            hourlyRate: hourly,
-            flatRate: flat
-        )
-        services.append(service)
-        newServiceName = ""
-        newServiceDescription = ""
-        newServiceHourlyRate = ""
-        newServiceFlatRate = ""
-        showAddServiceSheet = false
-    }
-
-    // --- AI Enhancement Logic ---
-    private func enhanceServiceWithAI(index: Int) {
-        guard services.indices.contains(index) else { return }
-        services[index].isEnhancing = true
-        services[index].enhancementError = nil
-        let name = services[index].name
-        let desc = services[index].description
-        services[index].originalDescription = desc
-        Task {
-            struct CategoryPickerView: View {
-                @Environment(\.dismiss) private var dismiss
-                @Binding var selected: [String]
-                var allCategories: [String] = Provider.availableCategories
-
-                var body: some View {
-                    NavigationView {
-                        List {
-                            ForEach(allCategories, id: \.self) { category in
-                                HStack {
-                                    Text(category)
-                                    Spacer()
-                                    if selected.contains(category) {
-                                        Image(systemName: "checkmark")
-                                            .foregroundColor(.teal)
-                                    }
-                                }
-                                .contentShape(Rectangle()) // makes the whole row tappable
-                                .onTapGesture {
-                                    toggle(category)
-                                }
-                            }
-                        }
-                        .navigationTitle("Select Categories")
-                        .listStyle(.insetGrouped)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarLeading) {
-                                Button("Cancel") { dismiss() }
-                            }
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button("Done") { dismiss() }
-                            }
-                        }
-                    }
-                }
-
-                private func toggle(_ category: String) {
-                    if let index = selected.firstIndex(of: category) {
-                        selected.remove(at: index)
-                    } else {
-                        selected.append(category)
-                    }
-                }
-            }
-            do {
-                let enhanced = try await aiService.enhanceServiceDescription(name: name, description: desc)
-                services[index].enhancedDescription = enhanced
-                services[index].isShowingEnhanced = true
-            } catch {
-                services[index].enhancementError = error.localizedDescription
-            }
-            services[index].isEnhancing = false
-        }
-    }
-    private func keepAISuggestion(index: Int) {
-        guard services.indices.contains(index), let enhanced = services[index].enhancedDescription else { return }
-        services[index].description = enhanced
-        services[index].isShowingEnhanced = false
-        services[index].enhancedDescription = nil
-        services[index].originalDescription = nil
-        services[index].enhancementError = nil
-    }
-    private func undoAISuggestion(index: Int) {
-        guard services.indices.contains(index), let original = services[index].originalDescription else { return }
-        services[index].description = original
-        services[index].isShowingEnhanced = false
-        services[index].enhancedDescription = nil
-        services[index].originalDescription = nil
-        services[index].enhancementError = nil
-    }
 }
-
-// MARK: - Category Picker
-struct CategoryPickerView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Binding var selected: [String]
-    var allCategories: [String] = Provider.availableCategories
-
-    var body: some View {
-        NavigationView {
-            List {
-                ForEach(allCategories, id: \.self) { category in
-                    HStack {
-                        Text(category)
-                        Spacer()
-                        if selected.contains(category) {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.teal)
-                        }
-                    }
-                    .contentShape(Rectangle()) // makes the whole row tappable
-                    .onTapGesture {
-                        toggle(category)
-                    }
-                }
-            }
-            .navigationTitle("Select Categories")
-            .listStyle(.insetGrouped)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-    }
-
-    private func toggle(_ category: String) {
-        if let index = selected.firstIndex(of: category) {
-            selected.remove(at: index)
-        } else {
-            selected.append(category)
-        }
-    }
-}
-
-
-
-
-// MARK: - Provider Pool Add Helper
-extension Provider {
-    static func addToPool(_ provider: Provider) {
-        // In a real app, this would save to a backend or persistent store
-        // For demo, append to sampleData (if not already present)
-        if !sampleData.contains(where: { $0.id == provider.id }) {
-            sampleData.append(provider)
-        }
-    }
-} 

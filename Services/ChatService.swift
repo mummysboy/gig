@@ -5,9 +5,12 @@ class ChatService: ObservableObject {
     @Published var messages: [Message] = []
     @Published var isLoading = false
     @Published var error: String?
+    @Published var currentTypingMessage: String = ""
+    @Published var isTyping = false
     
     private var cancellables = Set<AnyCancellable>()
     private let aiService = AIService()
+    private var typingTimer: Timer?
     
     func sendMessage(_ content: String) {
         let userMessage = Message(content: content, isFromUser: true)
@@ -35,6 +38,9 @@ class ChatService: ObservableObject {
             // Map AI recommendations to actual providers
             let suggestedProviders = mapRecommendationsToProviders(analysis.recommendations)
             
+            // Start typing animation
+            await startTypingAnimation(analysis.response)
+            
             let aiMessage = Message(
                 content: analysis.response,
                 isFromUser: false,
@@ -49,6 +55,9 @@ class ChatService: ObservableObject {
             let mockAnalysis = aiService.getMockAnalysis(for: userMessage)
             let suggestedProviders = mapRecommendationsToProviders(mockAnalysis.recommendations)
             
+            // Start typing animation for fallback
+            await startTypingAnimation(mockAnalysis.response)
+            
             let aiMessage = Message(
                 content: mockAnalysis.response,
                 isFromUser: false,
@@ -61,6 +70,36 @@ class ChatService: ObservableObject {
         }
         
         isLoading = false
+        isTyping = false
+        currentTypingMessage = ""
+    }
+    
+    @MainActor
+    private func startTypingAnimation(_ fullMessage: String) async {
+        isTyping = true
+        currentTypingMessage = ""
+        
+        // Calculate typing speed (80% faster - about 540 characters per minute)
+        let charactersPerMinute: Double = 540
+        let totalCharacters = fullMessage.count
+        let totalTime = (Double(totalCharacters) / charactersPerMinute) * 60 // Convert to seconds
+        
+        // Add some randomness to make it feel more natural
+        let baseDelay = totalTime / Double(totalCharacters)
+        
+        for (index, character) in fullMessage.enumerated() {
+            // Add some randomness to typing speed
+            let randomDelay = baseDelay * Double.random(in: 0.7...1.3)
+            
+            try? await Task.sleep(nanoseconds: UInt64(randomDelay * 1_000_000_000))
+            
+            await MainActor.run {
+                currentTypingMessage += String(character)
+            }
+        }
+        
+        // Small pause at the end
+        try? await Task.sleep(nanoseconds: UInt64(0.3 * 1_000_000_000))
     }
     
     private func mapRecommendationsToProviders(_ recommendations: [ServiceRecommendation]) -> [Provider] {

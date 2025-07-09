@@ -1,3 +1,5 @@
+// AIService.swift — Enhanced with Similarity Logic
+
 import Foundation
 import Combine
 
@@ -6,7 +8,7 @@ struct OpenAIRequest: Codable {
     let messages: [OpenAIMessage]
     let maxTokens: Int
     let temperature: Double
-    
+
     enum CodingKeys: String, CodingKey {
         case model, messages, temperature
         case maxTokens = "max_tokens"
@@ -30,7 +32,7 @@ struct ServiceRecommendation: Codable {
     let service: String
     let description: String
     let reasoning: String
-    let urgency: String // "low", "medium", "high"
+    let urgency: String
 }
 
 struct AIAnalysisResult: Codable {
@@ -43,57 +45,51 @@ struct AIAnalysisResult: Codable {
 class AIService: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
-    
+
     private let apiKey: String
     private let baseURL = "https://api.openai.com/v1/chat/completions"
-    
+
     init() {
-        // Use the secure configuration
         self.apiKey = Config.openAIKey
-        
-        // Validate the configuration
         if !Config.validateConfiguration() {
             print("⚠️ Warning: OpenAI API key configuration is invalid")
         }
     }
-    
+
     func analyzeUserMessage(_ message: String) async throws -> AIAnalysisResult {
         isLoading = true
         error = nil
-        
         defer { isLoading = false }
-        
-        // Get dynamic categories from the sample data
+
         let categoriesList = Provider.categoriesList
-        
         let systemPrompt = """
-        You are an AI assistant for a service marketplace app called "Gig". Your job is to:
-        1. Analyze user messages to understand their needs
-        2. Recommend relevant services from these EXACT categories (these are the only categories available in our system):
+        You are an AI assistant for a service marketplace app called \"Gig\". Your responsibilities:
+
+        1. Understand the user's message and identify their intent.
+        2. Match their request to services from the following categories:
            \(Provider.categoriesForAIPrompt)
-        
-        3. Provide a helpful response and specific service recommendations
-        
-        IMPORTANT: Only recommend categories that exist in the list above. If a user asks for a service that doesn't match any of these categories, suggest the closest available category or ask for clarification.
-        
-        Available categories: \(categoriesList)
-        
-        Respond in JSON format:
+
+        3. If there’s no exact match, suggest the closest matching services based on semantic similarity or shared functionality.
+
+        4. Always use categories that exist in the list above. If a service doesn't exist, recommend the most relevant alternative based on the service description.
+
+        5. Output only valid JSON, in this format:
+
         {
-            "response": "Your helpful response to the user",
-            "recommendations": [
-                {
-                    "service": "Exact category name from the list above",
-                    "description": "Brief description of what this service can help with",
-                    "reasoning": "Why you're recommending this service",
-                    "urgency": "low/medium/high"
-                }
-            ],
-            "intent": "Brief description of user's intent",
-            "confidence": 0.95
+          "response": "Concise and actionable response to the user",
+          "recommendations": [
+            {
+              "service": "Exact match or most relevant category name from the list",
+              "description": "Short explanation of what this service covers",
+              "reasoning": "Why this service was recommended (match, similarity, or substitution)",
+              "urgency": "low/medium/high"
+            }
+          ],
+          "intent": "Short phrase explaining user’s intent",
+          "confidence": 0.0 to 1.0
         }
         """
-        
+
         let request = OpenAIRequest(
             model: Config.openAIModel,
             messages: [
@@ -103,197 +99,85 @@ class AIService: ObservableObject {
             maxTokens: Config.openAIMaxTokens,
             temperature: Config.openAITemperature
         )
-        
+
         guard let url = URL(string: baseURL) else {
             throw AIError.invalidURL
         }
-        
+
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         do {
             urlRequest.httpBody = try JSONEncoder().encode(request)
         } catch {
             throw AIError.encodingError
         }
-        
+
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AIError.invalidResponse
-        }
-        
-        guard httpResponse.statusCode == 200 else {
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw AIError.apiError("HTTP \(httpResponse.statusCode): \(errorMessage)")
+            throw AIError.apiError("HTTP \(statusCode): \(errorMessage)")
         }
-        
-        do {
-            let openAIResponse = try JSONDecoder().decode(OpenAIResponse.self, from: data)
-            guard let content = openAIResponse.choices.first?.message.content else {
-                throw AIError.noContent
-            }
-            
-            // Parse the JSON response from ChatGPT
-            guard let jsonData = content.data(using: .utf8) else {
-                throw AIError.parsingError
-            }
-            
-            let analysisResult = try JSONDecoder().decode(AIAnalysisResult.self, from: jsonData)
-            return analysisResult
-            
-        } catch {
-            print("[AIService] OpenAI API error (parsing): \(error)")
+
+        guard let content = try JSONDecoder().decode(OpenAIResponse.self, from: data).choices.first?.message.content else {
+            throw AIError.noContent
+        }
+
+        guard let jsonData = content.data(using: .utf8) else {
             throw AIError.parsingError
         }
+
+        return try JSONDecoder().decode(AIAnalysisResult.self, from: jsonData)
     }
-    
+
     func getMockAnalysis(for message: String) -> AIAnalysisResult {
-        // Fallback mock response when API is not available
-        let lowercasedMessage = message.lowercased()
-        
-        // Get available categories for dynamic recommendations
-        let availableCategories = Provider.availableCategories
-        
-        if lowercasedMessage.contains("plumbing") || lowercasedMessage.contains("leak") || lowercasedMessage.contains("pipe") {
+        let lowercased = message.lowercased()
+        let categories = Provider.availableCategories
+
+        let match = categories.max(by: { fuzzySimilarity($0, lowercased) < fuzzySimilarity($1, lowercased) })
+
+        if let best = match, fuzzySimilarity(best, lowercased) > 0.4 {
             return AIAnalysisResult(
-                response: "I can see you're having plumbing issues. Let me find you a qualified plumber who can help with that.",
+                response: "We couldn’t find an exact match, but here’s something close:",
                 recommendations: [
                     ServiceRecommendation(
-                        service: availableCategories.contains("Plumber") ? "Plumber" : "Handyman",
-                        description: "Professional plumbing repair and maintenance",
-                        reasoning: "Your message mentions plumbing issues which requires specialized skills",
-                        urgency: "high"
-                    ),
-                    ServiceRecommendation(
-                        service: "Handyman",
-                        description: "General home repairs and maintenance",
-                        reasoning: "Handyman can also help with basic plumbing and related repairs",
+                        service: best,
+                        description: "Professional \(best.lowercased()) services",
+                        reasoning: "This category closely matches your request",
                         urgency: "medium"
                     )
                 ],
-                intent: "Plumbing repair needed",
-                confidence: 0.9
-            )
-        } else if lowercasedMessage.contains("tutor") || lowercasedMessage.contains("math") || lowercasedMessage.contains("homework") || lowercasedMessage.contains("study") {
-            return AIAnalysisResult(
-                response: "I understand you need help with tutoring, particularly in math. I'll connect you with experienced tutors.",
-                recommendations: [
-                    ServiceRecommendation(
-                        service: "Tutor",
-                        description: "Expert math tutoring and academic support",
-                        reasoning: "You mentioned needing tutoring help with math",
-                        urgency: "medium"
-                    )
-                ],
-                intent: "Academic tutoring needed",
-                confidence: 0.85
-            )
-        } else if lowercasedMessage.contains("clean") || lowercasedMessage.contains("housekeeping") || lowercasedMessage.contains("organize") {
-            return AIAnalysisResult(
-                response: "I can help you find professional cleaning services for your home. Let me connect you with reliable cleaners.",
-                recommendations: [
-                    ServiceRecommendation(
-                        service: "Cleaner",
-                        description: "Professional house cleaning and organizing",
-                        reasoning: "You mentioned needing cleaning services",
-                        urgency: "medium"
-                    )
-                ],
-                intent: "House cleaning needed",
-                confidence: 0.8
-            )
-        } else if lowercasedMessage.contains("photo") || lowercasedMessage.contains("camera") || lowercasedMessage.contains("event") {
-            return AIAnalysisResult(
-                response: "I can help you find a professional photographer for your event. Let me connect you with talented photographers.",
-                recommendations: [
-                    ServiceRecommendation(
-                        service: availableCategories.contains("Photographer") ? "Photographer" : "Creative",
-                        description: "Professional photography for events and portraits",
-                        reasoning: "You mentioned needing photography services",
-                        urgency: "medium"
-                    ),
-                    ServiceRecommendation(
-                        service: "Creative",
-                        description: "Creative services including photography and videography",
-                        reasoning: "Creative professionals can also help with photography needs",
-                        urgency: "low"
-                    )
-                ],
-                intent: "Photography services needed",
-                confidence: 0.8
-            )
-        } else if lowercasedMessage.contains("trainer") || lowercasedMessage.contains("fitness") || lowercasedMessage.contains("workout") {
-            return AIAnalysisResult(
-                response: "I can help you find a personal trainer to achieve your fitness goals. Let me connect you with certified trainers.",
-                recommendations: [
-                    ServiceRecommendation(
-                        service: availableCategories.contains("Personal Trainer") ? "Personal Trainer" : "Coach",
-                        description: "Certified personal training and fitness coaching",
-                        reasoning: "You mentioned needing fitness training",
-                        urgency: "medium"
-                    ),
-                    ServiceRecommendation(
-                        service: "Coach",
-                        description: "Personal coaching including fitness and wellness",
-                        reasoning: "Coaches can also help with fitness and wellness goals",
-                        urgency: "low"
-                    )
-                ],
-                intent: "Fitness training needed",
-                confidence: 0.8
-            )
-        } else if lowercasedMessage.contains("electrical") || lowercasedMessage.contains("wiring") || lowercasedMessage.contains("outlet") {
-            return AIAnalysisResult(
-                response: "I can help you find a qualified electrician for your electrical work. Let me connect you with licensed professionals.",
-                recommendations: [
-                    ServiceRecommendation(
-                        service: availableCategories.contains("Electrician") ? "Electrician" : "Handyman",
-                        description: "Professional electrical work and installations",
-                        reasoning: "You mentioned needing electrical services",
-                        urgency: "high"
-                    ),
-                    ServiceRecommendation(
-                        service: "Handyman",
-                        description: "General home repairs including basic electrical work",
-                        reasoning: "Handyman can help with basic electrical repairs",
-                        urgency: "medium"
-                    )
-                ],
-                intent: "Electrical work needed",
-                confidence: 0.9
-            )
-        } else {
-            // Default response with dynamic categories
-            let defaultCategories = Array(availableCategories.prefix(3))
-            let recommendations = defaultCategories.map { category in
-                ServiceRecommendation(
-                    service: category,
-                    description: "Professional \(category.lowercased()) services",
-                    reasoning: "General service category that covers a wide range of needs",
-                    urgency: "low"
-                )
-            }
-            
-            return AIAnalysisResult(
-                response: "I'd be happy to help you find the right service! I can help with \(Provider.categoriesList.lowercased()), and more. Could you tell me more about what you need?",
-                recommendations: recommendations,
-                intent: "General inquiry",
-                confidence: 0.5
+                intent: "Similar service",
+                confidence: 0.6
             )
         }
+
+        return AIAnalysisResult(
+            response: "Here are a few general services we offer:",
+            recommendations: categories.prefix(3).map {
+                ServiceRecommendation(
+                    service: $0,
+                    description: "Professional \($0.lowercased()) services",
+                    reasoning: "Popular default recommendation",
+                    urgency: "low"
+                )
+            },
+            intent: "General inquiry",
+            confidence: 0.5
+        )
     }
-    
-    /// Enhances a service description using AI, given the service name and user description.
+
     func enhanceServiceDescription(name: String, description: String) async throws -> String {
         let prompt = """
-        You are an expert copywriter for a service marketplace app. Improve the following service description to make it more compelling, clear, and professional. Use the service name for context. Do not change the meaning, just enhance the language. Return only the improved description, nothing else.
-        
+        You are an expert copywriter for a service marketplace app. Improve the following service description to make it more compelling, clear, and professional. Do not change the meaning.
         Service Name: \(name)
         User Description: \(description)
         """
+
         let request = OpenAIRequest(
             model: Config.openAIModel,
             messages: [
@@ -303,57 +187,57 @@ class AIService: ObservableObject {
             maxTokens: 200,
             temperature: 0.7
         )
+
         guard let url = URL(string: baseURL) else {
             throw AIError.invalidURL
         }
+
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
         do {
             urlRequest.httpBody = try JSONEncoder().encode(request)
         } catch {
             throw AIError.encodingError
         }
+
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AIError.invalidResponse
-        }
-        guard httpResponse.statusCode == 200 else {
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw AIError.apiError("HTTP \(httpResponse.statusCode): \(errorMessage)")
+            throw AIError.apiError("HTTP \(statusCode): \(errorMessage)")
         }
-        let openAIResponse = try JSONDecoder().decode(OpenAIResponse.self, from: data)
-        guard let content = openAIResponse.choices.first?.message.content else {
+
+        guard let content = try JSONDecoder().decode(OpenAIResponse.self, from: data).choices.first?.message.content else {
             throw AIError.noContent
         }
-        // Return the improved description directly
+
         return content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Basic fuzzy similarity using token overlap (replace with embeddings for production)
+    private func fuzzySimilarity(_ a: String, _ b: String) -> Double {
+        let aWords = Set(a.lowercased().split(separator: " "))
+        let bWords = Set(b.lowercased().split(separator: " "))
+        let overlap = aWords.intersection(bWords)
+        return Double(overlap.count) / Double(aWords.union(bWords).count)
     }
 }
 
 enum AIError: Error, LocalizedError {
-    case invalidURL
-    case encodingError
-    case invalidResponse
-    case apiError(String)
-    case noContent
-    case parsingError
-    
+    case invalidURL, encodingError, invalidResponse, apiError(String), noContent, parsingError
+
     var errorDescription: String? {
         switch self {
-        case .invalidURL:
-            return "Invalid URL"
-        case .encodingError:
-            return "Failed to encode request"
-        case .invalidResponse:
-            return "Invalid response from server"
-        case .apiError(let message):
-            return "API Error: \(message)"
-        case .noContent:
-            return "No content received"
-        case .parsingError:
-            return "Failed to parse response"
+        case .invalidURL: return "Invalid URL"
+        case .encodingError: return "Failed to encode request"
+        case .invalidResponse: return "Invalid server response"
+        case .apiError(let msg): return "API Error: \(msg)"
+        case .noContent: return "No content received"
+        case .parsingError: return "Failed to parse response"
         }
     }
-} 
+}
